@@ -1,12 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, FileText } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface QuestionForm {
   text: string;
@@ -14,31 +22,93 @@ interface QuestionForm {
   correctAnswer: number;
 }
 
+interface Assignment {
+  id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  created_at: string;
+  questions: { count: number }[];
+  submissions: { count: number }[];
+}
+
+interface Submission {
+  id: string;
+  score: number | null;
+  total_questions: number;
+  submitted_at: string;
+  student: {
+    full_name: string;
+  };
+}
+
 const Instructor = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { user } = useAuth();
   const [assignmentTitle, setAssignmentTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState<Date>();
   const [questions, setQuestions] = useState<QuestionForm[]>([
-    {
-      text: "",
-      options: ["", "", "", ""],
-      correctAnswer: 0
-    }
+    { text: "", options: ["", "", "", ""], correctAnswer: 0 },
   ]);
+  const [myAssignments, setMyAssignments] = useState<Assignment[]>([]);
+  const [selectedAssignmentSubmissions, setSelectedAssignmentSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchMyAssignments();
+  }, [user]);
+
+  const fetchMyAssignments = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("assignments")
+        .select(`
+          *,
+          questions(count),
+          submissions(count)
+        `)
+        .eq("instructor_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setMyAssignments(data || []);
+    } catch (error: any) {
+      toast.error("Failed to fetch assignments: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSubmissions = async (assignmentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("submissions")
+        .select(`
+          *,
+          student:profiles!student_id(full_name)
+        `)
+        .eq("assignment_id", assignmentId)
+        .order("submitted_at", { ascending: false });
+
+      if (error) throw error;
+      setSelectedAssignmentSubmissions(data || []);
+    } catch (error: any) {
+      toast.error("Failed to fetch submissions: " + error.message);
+    }
+  };
 
   const addQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        text: "",
-        options: ["", "", "", ""],
-        correctAnswer: 0
-      }
-    ]);
+    setQuestions([...questions, { text: "", options: ["", "", "", ""], correctAnswer: 0 }]);
   };
 
   const removeQuestion = (index: number) => {
-    setQuestions(questions.filter((_, i) => i !== index));
+    if (questions.length > 1) {
+      setQuestions(questions.filter((_, i) => i !== index));
+    }
   };
 
   const updateQuestion = (index: number, field: keyof QuestionForm, value: any) => {
@@ -53,142 +123,324 @@ const Instructor = () => {
     setQuestions(newQuestions);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!assignmentTitle.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an assignment title",
-        variant: "destructive"
-      });
+      toast.error("Please enter an assignment title");
       return;
     }
 
-    const hasEmptyFields = questions.some(
-      q => !q.text.trim() || q.options.some(opt => !opt.trim())
-    );
-
-    if (hasEmptyFields) {
-      toast({
-        title: "Error",
-        description: "Please fill in all question fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    toast({
-      title: "Success!",
-      description: "Assignment created successfully"
-    });
-
-    // Reset form
-    setAssignmentTitle("");
-    setQuestions([
-      {
-        text: "",
-        options: ["", "", "", ""],
-        correctAnswer: 0
+    for (let i = 0; i < questions.length; i++) {
+      if (!questions[i].text.trim()) {
+        toast.error(`Question ${i + 1} text is required`);
+        return;
       }
-    ]);
+      for (let j = 0; j < 4; j++) {
+        if (!questions[i].options[j].trim()) {
+          toast.error(`Question ${i + 1}, Option ${j + 1} is required`);
+          return;
+        }
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      const { data: assignment, error: assignmentError } = await supabase
+        .from("assignments")
+        .insert({
+          title: assignmentTitle,
+          description: description || null,
+          instructor_id: user?.id,
+          due_date: dueDate?.toISOString() || null,
+        })
+        .select()
+        .single();
+
+      if (assignmentError) throw assignmentError;
+
+      const questionsToInsert = questions.map((q, index) => ({
+        assignment_id: assignment.id,
+        text: q.text,
+        options: q.options,
+        correct_answer: q.correctAnswer,
+        order_number: index,
+      }));
+
+      const { error: questionsError } = await supabase
+        .from("questions")
+        .insert(questionsToInsert);
+
+      if (questionsError) throw questionsError;
+
+      toast.success("Assignment created successfully!");
+      setAssignmentTitle("");
+      setDescription("");
+      setDueDate(undefined);
+      setQuestions([{ text: "", options: ["", "", "", ""], correctAnswer: 0 }]);
+      fetchMyAssignments();
+    } catch (error: any) {
+      toast.error("Failed to create assignment: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteAssignment = async (assignmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from("assignments")
+        .delete()
+        .eq("id", assignmentId);
+
+      if (error) throw error;
+
+      toast.success("Assignment deleted successfully");
+      fetchMyAssignments();
+    } catch (error: any) {
+      toast.error("Failed to delete assignment: " + error.message);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card p-4 shadow-sm">
-        <div className="mx-auto max-w-5xl flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Create Assignment</h1>
-          <Button variant="outline" onClick={() => navigate("/")}>
-            Back to Home
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-5 w-5" />
           </Button>
+          <h1 className="text-3xl font-bold">Instructor Portal</h1>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-5xl p-6">
-        <Card className="p-8">
-          <div className="mb-8">
-            <Label htmlFor="title" className="text-lg font-semibold">
-              Assignment Title
-            </Label>
-            <Input
-              id="title"
-              placeholder="e.g., Reading Comprehension Quiz 1"
-              value={assignmentTitle}
-              onChange={(e) => setAssignmentTitle(e.target.value)}
-              className="mt-2"
-            />
-          </div>
+        <Tabs defaultValue="create" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="create">Create Assignment</TabsTrigger>
+            <TabsTrigger value="assignments">My Assignments</TabsTrigger>
+          </TabsList>
 
-          <div className="space-y-8">
-            {questions.map((question, qIndex) => (
-              <Card key={qIndex} className="border-2 p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                    <FileText className="h-5 w-5" />
-                    Question {qIndex + 1}
-                  </h3>
-                  {questions.length > 1 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeQuestion(qIndex)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+          <TabsContent value="create">
+            <Card>
+              <CardHeader>
+                <CardTitle>Create New Assignment</CardTitle>
+                <CardDescription>Add questions and set a due date for your assignment</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="title">Assignment Title</Label>
+                  <Input
+                    id="title"
+                    placeholder="Enter assignment title"
+                    value={assignmentTitle}
+                    onChange={(e) => setAssignmentTitle(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Input
+                    id="description"
+                    placeholder="Enter assignment description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Due Date (Optional)</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !dueDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dueDate ? format(dueDate, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={setDueDate}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div className="space-y-4">
-                  <div>
-                    <Label>Question Text</Label>
-                    <Textarea
-                      placeholder="Enter your question here..."
-                      value={question.text}
-                      onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
-                      className="mt-2"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="mb-3 block">Answer Options</Label>
-                    <div className="space-y-3">
-                      {question.options.map((option, oIndex) => (
-                        <div key={oIndex} className="flex items-center gap-3">
-                          <input
-                            type="radio"
-                            name={`correct-${qIndex}`}
-                            checked={question.correctAnswer === oIndex}
-                            onChange={() => updateQuestion(qIndex, "correctAnswer", oIndex)}
-                            className="h-4 w-4 text-primary"
-                          />
-                          <Input
-                            placeholder={`Option ${oIndex + 1}`}
-                            value={option}
-                            onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                          />
+                  <Label>Questions</Label>
+                  {questions.map((question, qIndex) => (
+                    <Card key={qIndex}>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
+                          {questions.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeQuestion(qIndex)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Select the radio button to mark the correct answer
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <Input
+                          placeholder="Enter question text"
+                          value={question.text}
+                          onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
+                        />
 
-          <div className="mt-8 flex gap-4">
-            <Button variant="outline" onClick={addQuestion} className="flex-1">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Question
-            </Button>
-            <Button onClick={handleSubmit} className="flex-1">
-              Create Assignment
-            </Button>
-          </div>
-        </Card>
-      </main>
+                        <RadioGroup
+                          value={question.correctAnswer.toString()}
+                          onValueChange={(value) =>
+                            updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                          }
+                        >
+                          {question.options.map((option, oIndex) => (
+                            <div key={oIndex} className="flex items-center gap-2">
+                              <RadioGroupItem
+                                value={oIndex.toString()}
+                                id={`q${qIndex}-o${oIndex}`}
+                              />
+                              <Input
+                                placeholder={`Option ${oIndex + 1}`}
+                                value={option}
+                                onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                                className="flex-1"
+                              />
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  <Button onClick={addQuestion} variant="outline" className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Question
+                  </Button>
+                </div>
+
+                <Button onClick={handleSubmit} className="w-full" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Assignment"
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="assignments">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Assignments</CardTitle>
+                <CardDescription>View and manage your created assignments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : myAssignments.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No assignments created yet
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Questions</TableHead>
+                        <TableHead>Submissions</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {myAssignments.map((assignment) => (
+                        <TableRow key={assignment.id}>
+                          <TableCell className="font-medium">{assignment.title}</TableCell>
+                          <TableCell>{assignment.questions[0]?.count || 0}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="link"
+                              onClick={() => fetchSubmissions(assignment.id)}
+                            >
+                              {assignment.submissions[0]?.count || 0}
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            {assignment.due_date
+                              ? new Date(assignment.due_date).toLocaleDateString()
+                              : "No due date"}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteAssignment(assignment.id)}
+                            >
+                              Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+
+                {selectedAssignmentSubmissions.length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-semibold mb-4">Submissions</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>Percentage</TableHead>
+                          <TableHead>Submitted</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedAssignmentSubmissions.map((submission) => (
+                          <TableRow key={submission.id}>
+                            <TableCell>{submission.student.full_name}</TableCell>
+                            <TableCell>
+                              {submission.score !== null
+                                ? `${submission.score}/${submission.total_questions}`
+                                : "Pending"}
+                            </TableCell>
+                            <TableCell>
+                              {submission.score !== null
+                                ? `${Math.round(
+                                    (submission.score / submission.total_questions) * 100
+                                  )}%`
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(submission.submitted_at).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

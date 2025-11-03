@@ -14,9 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignments: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          instructor_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          instructor_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          instructor_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
           updated_at: string
@@ -24,6 +63,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
           updated_at?: string
@@ -31,12 +71,129 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
           updated_at?: string
           verified?: boolean
         }
         Relationships: []
+      }
+      questions: {
+        Row: {
+          assignment_id: string
+          correct_answer: number
+          created_at: string
+          id: string
+          options: Json
+          order_number: number
+          text: string
+        }
+        Insert: {
+          assignment_id: string
+          correct_answer: number
+          created_at?: string
+          id?: string
+          options: Json
+          order_number: number
+          text: string
+        }
+        Update: {
+          assignment_id?: string
+          correct_answer?: number
+          created_at?: string
+          id?: string
+          options?: Json
+          order_number?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_answers: {
+        Row: {
+          id: string
+          question_id: string
+          selected_answer: number
+          submission_id: string
+        }
+        Insert: {
+          id?: string
+          question_id: string
+          selected_answer: number
+          submission_id: string
+        }
+        Update: {
+          id?: string
+          question_id?: string
+          selected_answer?: number
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_answers_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      submissions: {
+        Row: {
+          assignment_id: string
+          id: string
+          score: number | null
+          student_id: string
+          submitted_at: string
+          total_questions: number
+        }
+        Insert: {
+          assignment_id: string
+          id?: string
+          score?: number | null
+          student_id: string
+          submitted_at?: string
+          total_questions: number
+        }
+        Update: {
+          assignment_id?: string
+          id?: string
+          score?: number | null
+          student_id?: string
+          submitted_at?: string
+          total_questions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

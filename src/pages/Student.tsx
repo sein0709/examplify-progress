@@ -1,220 +1,470 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { CheckCircle, Circle, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 
 interface Question {
-  id: number;
+  id: string;
   text: string;
   options: string[];
-  correctAnswer: number;
+  correct_answer: number;
+  order_number: number;
 }
 
-const mockQuestions: Question[] = [
-  {
-    id: 1,
-    text: "Which of the following best describes the main idea of the passage?",
-    options: [
-      "The importance of early childhood education",
-      "The role of technology in modern classrooms",
-      "Various teaching methodologies across different cultures",
-      "The impact of standardized testing on student performance"
-    ],
-    correctAnswer: 2
-  },
-  {
-    id: 2,
-    text: "According to the text, what is the primary benefit of collaborative learning?",
-    options: [
-      "It reduces the workload for teachers",
-      "It helps students develop communication skills",
-      "It makes classes more entertaining",
-      "It requires less classroom space"
-    ],
-    correctAnswer: 1
-  },
-  {
-    id: 3,
-    text: "The author's tone in the passage can best be described as:",
-    options: [
-      "Critical and pessimistic",
-      "Neutral and informative",
-      "Enthusiastic and promotional",
-      "Skeptical and questioning"
-    ],
-    correctAnswer: 1
-  }
-];
+interface Assignment {
+  id: string;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  instructor: {
+    full_name: string;
+  };
+  questions: Question[];
+  submission?: {
+    id: string;
+    score: number;
+    total_questions: number;
+  };
+}
+
+interface Submission {
+  id: string;
+  score: number;
+  total_questions: number;
+  submitted_at: string;
+  assignment: {
+    title: string;
+  };
+}
 
 const Student = () => {
   const navigate = useNavigate();
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<(number | null)[]>(
-    new Array(mockQuestions.length).fill(null)
-  );
+  const { user } = useAuth();
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [mySubmissions, setMySubmissions] = useState<Submission[]>([]);
+  const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: number }>({});
   const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleAnswerSelect = (optionIndex: number) => {
-    const newAnswers = [...selectedAnswers];
-    newAnswers[currentQuestion] = optionIndex;
-    setSelectedAnswers(newAnswers);
+  useEffect(() => {
+    fetchAssignments();
+    fetchMySubmissions();
+  }, [user]);
+
+  const fetchAssignments = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("assignments")
+        .select(`
+          *,
+          instructor:profiles!instructor_id(full_name),
+          questions(*),
+          submissions!submissions_assignment_id_fkey!left(id, score, total_questions)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const formattedAssignments = (data || []).map((assignment: any) => ({
+        ...assignment,
+        questions: assignment.questions.sort(
+          (a: Question, b: Question) => a.order_number - b.order_number
+        ),
+        submission: assignment.submissions.find(
+          (sub: any) => sub && user && sub.student_id === user.id
+        ),
+      }));
+
+      setAssignments(formattedAssignments);
+    } catch (error: any) {
+      toast.error("Failed to fetch assignments: " + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMySubmissions = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from("submissions")
+        .select(`
+          *,
+          assignment:assignments(title)
+        `)
+        .eq("student_id", user.id)
+        .order("submitted_at", { ascending: false });
+
+      if (error) throw error;
+      setMySubmissions(data || []);
+    } catch (error: any) {
+      toast.error("Failed to fetch submissions: " + error.message);
+    }
+  };
+
+  const startAssignment = (assignment: Assignment) => {
+    setCurrentAssignment(assignment);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswers({});
+    setShowResults(false);
+  };
+
+  const handleAnswerSelect = (answer: number) => {
+    setSelectedAnswers({ ...selectedAnswers, [currentQuestionIndex]: answer });
   };
 
   const handleNext = () => {
-    if (currentQuestion < mockQuestions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+    if (currentAssignment && currentQuestionIndex < currentAssignment.questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
   const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
-  const handleSubmit = () => {
-    setShowResults(true);
+  const handleSubmit = async () => {
+    if (!currentAssignment || !user) return;
+
+    const allQuestionsAnswered = currentAssignment.questions.every(
+      (_, index) => selectedAnswers[index] !== undefined
+    );
+
+    if (!allQuestionsAnswered) {
+      toast.error("Please answer all questions before submitting");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let score = 0;
+      currentAssignment.questions.forEach((question, index) => {
+        if (selectedAnswers[index] === question.correct_answer) {
+          score++;
+        }
+      });
+
+      const { data: submission, error: submissionError } = await supabase
+        .from("submissions")
+        .insert({
+          assignment_id: currentAssignment.id,
+          student_id: user.id,
+          score,
+          total_questions: currentAssignment.questions.length,
+        })
+        .select()
+        .single();
+
+      if (submissionError) throw submissionError;
+
+      const answersToInsert = currentAssignment.questions.map((question, index) => ({
+        submission_id: submission.id,
+        question_id: question.id,
+        selected_answer: selectedAnswers[index],
+      }));
+
+      const { error: answersError } = await supabase
+        .from("student_answers")
+        .insert(answersToInsert);
+
+      if (answersError) throw answersError;
+
+      toast.success("Assignment submitted successfully!");
+      setShowResults(true);
+      fetchAssignments();
+      fetchMySubmissions();
+    } catch (error: any) {
+      toast.error("Failed to submit assignment: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const calculateScore = () => {
-    let correct = 0;
-    selectedAnswers.forEach((answer, index) => {
-      if (answer === mockQuestions[index].correctAnswer) {
-        correct++;
+    if (!currentAssignment) return 0;
+    let score = 0;
+    currentAssignment.questions.forEach((question, index) => {
+      if (selectedAnswers[index] === question.correct_answer) {
+        score++;
       }
     });
-    return correct;
+    return score;
   };
 
-  const progress = ((currentQuestion + 1) / mockQuestions.length) * 100;
-  const answeredCount = selectedAnswers.filter(a => a !== null).length;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  if (showResults) {
-    const score = calculateScore();
+  if (currentAssignment && !showResults) {
+    const currentQuestion = currentAssignment.questions[currentQuestionIndex];
+    const progress =
+      ((currentQuestionIndex + 1) / currentAssignment.questions.length) * 100;
+
     return (
       <div className="min-h-screen bg-background p-6">
-        <div className="mx-auto max-w-3xl">
-          <Card className="p-8 text-center">
-            <div className="mb-6">
-              <CheckCircle className="mx-auto h-20 w-20 text-primary" />
-            </div>
-            <h1 className="mb-4 text-3xl font-bold text-foreground">Quiz Complete!</h1>
-            <p className="mb-6 text-xl text-muted-foreground">
-              You scored {score} out of {mockQuestions.length}
-            </p>
-            <div className="mb-8 text-4xl font-bold text-primary">
-              {Math.round((score / mockQuestions.length) * 100)}%
-            </div>
-            <Button onClick={() => navigate("/")} size="lg">
-              Return to Home
+        <div className="max-w-3xl mx-auto space-y-6">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCurrentAssignment(null)}
+            >
+              <ArrowLeft className="h-5 w-5" />
             </Button>
+            <h1 className="text-2xl font-bold">{currentAssignment.title}</h1>
+            <div className="w-10" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>
+                Question {currentQuestionIndex + 1} of{" "}
+                {currentAssignment.questions.length}
+              </span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} />
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{currentQuestion.text}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup
+                value={selectedAnswers[currentQuestionIndex]?.toString() || ""}
+                onValueChange={(value) => handleAnswerSelect(parseInt(value))}
+              >
+                <div className="space-y-3">
+                  {currentQuestion.options.map((option, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center space-x-2 p-4 rounded-lg border hover:bg-accent cursor-pointer"
+                    >
+                      <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                      <Label
+                        htmlFor={`option-${index}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        {option}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentQuestionIndex === 0}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Previous
+            </Button>
+
+            {currentQuestionIndex === currentAssignment.questions.length - 1 ? (
+              <Button onClick={handleSubmit} disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Assignment"
+                )}
+              </Button>
+            ) : (
+              <Button onClick={handleNext}>
+                Next
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showResults && currentAssignment) {
+    const score = calculateScore();
+    const percentage = Math.round(
+      (score / currentAssignment.questions.length) * 100
+    );
+
+    return (
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">Assignment Complete!</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col items-center space-y-4">
+                <CheckCircle2 className="h-16 w-16 text-green-500" />
+                <div className="text-center">
+                  <p className="text-4xl font-bold">
+                    {score} / {currentAssignment.questions.length}
+                  </p>
+                  <p className="text-xl text-muted-foreground">{percentage}%</p>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => {
+                  setShowResults(false);
+                  setCurrentAssignment(null);
+                }}
+                className="w-full"
+              >
+                Back to Assignments
+              </Button>
+            </CardContent>
           </Card>
         </div>
       </div>
     );
   }
 
-  const question = mockQuestions[currentQuestion];
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card p-4 shadow-sm">
-        <div className="mx-auto max-w-5xl">
-          <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-foreground">Reading Comprehension Quiz</h1>
-            <Button variant="outline" onClick={() => navigate("/")}>
-              Exit Quiz
-            </Button>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Question {currentQuestion + 1} of {mockQuestions.length}</span>
-              <span>{answeredCount} answered</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-3xl font-bold">Student Portal</h1>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-5xl p-6">
-        <Card className="p-8">
-          <div className="mb-8">
-            <h2 className="mb-6 text-2xl font-semibold text-foreground">
-              {question.text}
-            </h2>
-            <div className="space-y-3">
-              {question.options.map((option, index) => {
-                const isSelected = selectedAnswers[currentQuestion] === index;
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSelect(index)}
-                    className={`w-full rounded-lg border-2 p-4 text-left transition-all hover:border-primary ${
-                      isSelected
-                        ? "border-primary bg-accent"
-                        : "border-border bg-card"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      {isSelected ? (
-                        <CheckCircle className="h-5 w-5 flex-shrink-0 text-primary" />
-                      ) : (
-                        <Circle className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
-                      )}
-                      <span className="text-foreground">{option}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        <Tabs defaultValue="assignments" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="assignments">Available Assignments</TabsTrigger>
+            <TabsTrigger value="submissions">My Submissions</TabsTrigger>
+          </TabsList>
 
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={currentQuestion === 0}
-            >
-              <ChevronLeft className="mr-2 h-4 w-4" />
-              Previous
-            </Button>
-
-            {currentQuestion === mockQuestions.length - 1 ? (
-              <Button
-                onClick={handleSubmit}
-                disabled={answeredCount !== mockQuestions.length}
-              >
-                Submit Quiz
-              </Button>
+          <TabsContent value="assignments">
+            {assignments.length === 0 ? (
+              <Card>
+                <CardContent className="py-12">
+                  <p className="text-center text-muted-foreground">
+                    No assignments available
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
-              <Button onClick={handleNext}>
-                Next
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="grid gap-4">
+                {assignments.map((assignment) => (
+                  <Card key={assignment.id}>
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle>{assignment.title}</CardTitle>
+                          <CardDescription>
+                            By {assignment.instructor.full_name}
+                            {assignment.due_date && (
+                              <> • Due {new Date(assignment.due_date).toLocaleDateString()}</>
+                            )}
+                          </CardDescription>
+                        </div>
+                        {assignment.submission ? (
+                          <Badge variant="secondary">
+                            Completed ({assignment.submission.score}/
+                            {assignment.submission.total_questions})
+                          </Badge>
+                        ) : (
+                          <Badge>Not Started</Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">
+                          {assignment.questions.length} questions
+                        </p>
+                        {!assignment.submission && (
+                          <Button onClick={() => startAssignment(assignment)}>
+                            Start Assignment
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
-          </div>
-        </Card>
+          </TabsContent>
 
-        <div className="mt-6 flex justify-center gap-2">
-          {mockQuestions.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentQuestion(index)}
-              className={`h-10 w-10 rounded-lg border-2 transition-all ${
-                selectedAnswers[index] !== null
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : currentQuestion === index
-                  ? "border-primary bg-accent"
-                  : "border-border bg-card hover:border-primary"
-              }`}
-            >
-              {index + 1}
-            </button>
-          ))}
-        </div>
-      </main>
+          <TabsContent value="submissions">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Submissions</CardTitle>
+                <CardDescription>View your past assignment submissions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {mySubmissions.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No submissions yet
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Assignment</TableHead>
+                        <TableHead>Score</TableHead>
+                        <TableHead>Percentage</TableHead>
+                        <TableHead>Submitted</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mySubmissions.map((submission) => (
+                        <TableRow key={submission.id}>
+                          <TableCell className="font-medium">
+                            {submission.assignment.title}
+                          </TableCell>
+                          <TableCell>
+                            {submission.score}/{submission.total_questions}
+                          </TableCell>
+                          <TableCell>
+                            {Math.round(
+                              (submission.score / submission.total_questions) * 100
+                            )}
+                            %
+                          </TableCell>
+                          <TableCell>
+                            {new Date(submission.submitted_at).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
