@@ -348,15 +348,13 @@ const Student = () => {
                     />
                   </div>
                 ) : (
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => window.open(currentAssignment.file_url!, '_blank')}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Open PDF Reference
-                    <ExternalLink className="h-4 w-4 ml-2" />
-                  </Button>
+                  <div className="w-full h-[600px] border rounded-lg overflow-hidden">
+                    <iframe
+                      src={currentAssignment.file_url!}
+                      className="w-full h-full"
+                      title="Assignment Reference Material"
+                    />
+                  </div>
                 )}
               </CardContent>
             </Card>
