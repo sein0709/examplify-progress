@@ -185,12 +185,6 @@ const Admin = () => {
         .filter(r => r.role === "instructor")
         .map(r => r.user_id);
 
-      // Check if current user (admin) is also an instructor
-      const { data: { user } } = await supabase.auth.getUser();
-      const currentUserIsInstructor = user && roles.some(
-        r => r.user_id === user.id && r.role === "instructor"
-      );
-
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name")
@@ -198,6 +192,20 @@ const Admin = () => {
         .eq("verified", true);
 
       if (profilesError) throw profilesError;
+
+      // Check if current user (admin) is also an instructor and add them if not already in list
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && instructorIds.includes(user.id) && !profiles?.some(p => p.id === user.id)) {
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .eq("id", user.id)
+          .single();
+        
+        if (userProfile) {
+          profiles?.push(userProfile);
+        }
+      }
 
       setInstructorsList(profiles || []);
     } catch (error: any) {
@@ -807,27 +815,35 @@ const Admin = () => {
                             onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
                           />
 
-                          <RadioGroup
-                            value={question.correctAnswer.toString()}
-                            onValueChange={(value) =>
-                              updateQuestion(qIndex, "correctAnswer", parseInt(value))
-                            }
-                          >
-                            {question.options.map((option, oIndex) => (
-                              <div key={oIndex} className="flex items-center gap-2">
-                                <RadioGroupItem
-                                  value={oIndex.toString()}
-                                  id={`q${qIndex}-o${oIndex}`}
-                                />
-                                <Input
-                                  placeholder={`Option ${oIndex + 1}`}
-                                  value={option}
-                                  onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                                  className="flex-1"
-                                />
-                              </div>
-                          ))}
-                        </RadioGroup>
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Select the correct answer:</Label>
+                            <RadioGroup
+                              value={question.correctAnswer.toString()}
+                              onValueChange={(value) =>
+                                updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                              }
+                            >
+                              {question.options.map((option, oIndex) => (
+                                <div key={oIndex} className="flex items-center gap-2">
+                                  <RadioGroupItem
+                                    value={oIndex.toString()}
+                                    id={`q${qIndex}-o${oIndex}`}
+                                  />
+                                  <Label 
+                                    htmlFor={`q${qIndex}-o${oIndex}`}
+                                    className="flex-1 cursor-pointer"
+                                  >
+                                    <Input
+                                      placeholder={`Option ${oIndex + 1}`}
+                                      value={option}
+                                      onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                                      className="flex-1"
+                                    />
+                                  </Label>
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          </div>
 
                         <div className="space-y-2">
                           <Label htmlFor={`explanation-${qIndex}`}>Explanation (Optional)</Label>

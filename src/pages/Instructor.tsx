@@ -358,27 +358,35 @@ const Instructor = () => {
                           onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
                         />
 
-                        <RadioGroup
-                          value={question.correctAnswer.toString()}
-                          onValueChange={(value) =>
-                            updateQuestion(qIndex, "correctAnswer", parseInt(value))
-                          }
-                        >
-                          {question.options.map((option, oIndex) => (
-                            <div key={oIndex} className="flex items-center gap-2">
-                              <RadioGroupItem
-                                value={oIndex.toString()}
-                                id={`q${qIndex}-o${oIndex}`}
-                              />
-                              <Input
-                                placeholder={`Option ${oIndex + 1}`}
-                                value={option}
-                                onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                                className="flex-1"
-                              />
-                            </div>
-                        ))}
-                      </RadioGroup>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Select the correct answer:</Label>
+                          <RadioGroup
+                            value={question.correctAnswer.toString()}
+                            onValueChange={(value) =>
+                              updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                            }
+                          >
+                            {question.options.map((option, oIndex) => (
+                              <div key={oIndex} className="flex items-center gap-2">
+                                <RadioGroupItem
+                                  value={oIndex.toString()}
+                                  id={`q${qIndex}-o${oIndex}`}
+                                />
+                                <Label 
+                                  htmlFor={`q${qIndex}-o${oIndex}`}
+                                  className="flex-1 cursor-pointer"
+                                >
+                                  <Input
+                                    placeholder={`Option ${oIndex + 1}`}
+                                    value={option}
+                                    onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                                    className="flex-1"
+                                  />
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </div>
 
                       <div className="space-y-2">
                         <Label htmlFor={`explanation-${qIndex}`}>Explanation (Optional)</Label>
