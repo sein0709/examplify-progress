@@ -678,12 +678,7 @@ const Admin = () => {
                               </div>
 
                               <div className="space-y-3">
-                                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                                  <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                    Click the radio button to mark the correct answer
-                                  </Label>
-                                </div>
+                                
                                 <RadioGroup value={question.correctAnswer.toString()} onValueChange={value => updateQuestion(qIndex, "correctAnswer", parseInt(value))}>
                                   {question.options.map((option, oIndex) => <div key={oIndex} className="flex items-center gap-2">
                                       <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}-o${oIndex}`} className="shrink-0" />
