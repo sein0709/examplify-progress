@@ -141,7 +141,6 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8">
         <div className="mb-6 flex items-center justify-center gap-3">
-          <BookOpen className="h-8 w-8 text-primary" />
           <h1 className="text-2xl font-bold text-foreground">Homework Hub</h1>
         </div>
 
