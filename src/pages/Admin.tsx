@@ -76,7 +76,6 @@ const Admin = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
 
   // Create Assignment States
   const [instructorsList, setInstructorsList] = useState<Instructor[]>([]);
@@ -86,7 +85,7 @@ const Admin = () => {
   const [dueDate, setDueDate] = useState<Date>();
   const [questions, setQuestions] = useState<QuestionForm[]>([{
     text: "",
-    options: ["", "", "", "", ""],
+    options: ["", "", "", ""],
     correctAnswer: 0,
     explanation: ""
   }]);
@@ -118,7 +117,7 @@ const Admin = () => {
       setStudents(usersWithRoles.filter(user => user.verified && user.role === "student"));
       setInstructors(usersWithRoles.filter(user => user.verified && user.role === "instructor"));
     } catch (error: any) {
-      toast.error("사용자 조회 실패: " + error.message);
+      toast.error("Failed to fetch users: " + error.message);
     }
   };
   const fetchAssignments = async () => {
@@ -136,7 +135,7 @@ const Admin = () => {
       if (error) throw error;
       setAssignments(data || []);
     } catch (error: any) {
-      toast.error("과제 조회 실패: " + error.message);
+      toast.error("Failed to fetch assignments: " + error.message);
     }
   };
   const fetchSubmissions = async () => {
@@ -154,7 +153,7 @@ const Admin = () => {
       if (error) throw error;
       setSubmissions(data || []);
     } catch (error: any) {
-      toast.error("제출 내역 조회 실패: " + error.message);
+      toast.error("Failed to fetch submissions: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -176,7 +175,7 @@ const Admin = () => {
       if (profilesError) throw profilesError;
       setInstructorsList(profiles || []);
     } catch (error: any) {
-      toast.error("강사 조회 실패: " + error.message);
+      toast.error("Failed to fetch instructors: " + error.message);
     }
   };
   useEffect(() => {
@@ -191,61 +190,16 @@ const Admin = () => {
   }, [hasRole, navigate]);
   const approveUser = async (userId: string) => {
     try {
-      // Check if user has a role assigned
-      const { data: userRole, error: roleCheckError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (roleCheckError) throw roleCheckError;
-
-      if (!userRole) {
-        toast.error("이 사용자에게 역할이 할당되지 않았습니다. 역할을 먼저 할당해주세요.");
-        return;
-      }
-
       const {
         error
       } = await supabase.from("profiles").update({
         verified: true
       }).eq("id", userId);
       if (error) throw error;
-      toast.success("사용자 승인 완료");
+      toast.success("User approved successfully");
       fetchUsers();
     } catch (error: any) {
-      toast.error("사용자 승인 실패: " + error.message);
-    }
-  };
-
-  const assignRole = async (userId: string, role: "student" | "instructor") => {
-    try {
-      // Check if user already has a role
-      const { data: existingRole } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (existingRole) {
-        // Update existing role
-        const { error } = await supabase
-          .from("user_roles")
-          .update({ role })
-          .eq("user_id", userId);
-        if (error) throw error;
-      } else {
-        // Insert new role
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role });
-        if (error) throw error;
-      }
-
-      toast.success("역할 할당 완료");
-      fetchUsers();
-    } catch (error: any) {
-      toast.error("역할 할당 실패: " + error.message);
+      toast.error("Failed to approve user: " + error.message);
     }
   };
   const rejectUser = async (userId: string) => {
@@ -254,10 +208,10 @@ const Admin = () => {
         error
       } = await supabase.from("profiles").delete().eq("id", userId);
       if (error) throw error;
-      toast.success("사용자 거부 완료");
+      toast.success("User rejected successfully");
       fetchUsers();
     } catch (error: any) {
-      toast.error("사용자 거부 실패: " + error.message);
+      toast.error("Failed to reject user: " + error.message);
     }
   };
   const revokeAccess = async (userId: string) => {
@@ -268,10 +222,10 @@ const Admin = () => {
         verified: false
       }).eq("id", userId);
       if (error) throw error;
-      toast.success("접근 권한 취소 완료");
+      toast.success("Access revoked successfully");
       fetchUsers();
     } catch (error: any) {
-      toast.error("접근 권한 취소 실패: " + error.message);
+      toast.error("Failed to revoke access: " + error.message);
     }
   };
   const deleteUser = async (userId: string) => {
@@ -284,10 +238,10 @@ const Admin = () => {
         error: profileError
       } = await supabase.from("profiles").delete().eq("id", userId);
       if (profileError) throw profileError;
-      toast.success("사용자 삭제 완료");
+      toast.success("User deleted successfully");
       fetchUsers();
     } catch (error: any) {
-      toast.error("사용자 삭제 실패: " + error.message);
+      toast.error("Failed to delete user: " + error.message);
     }
   };
   const deleteAssignment = async (assignmentId: string) => {
@@ -296,10 +250,10 @@ const Admin = () => {
         error
       } = await supabase.from("assignments").delete().eq("id", assignmentId);
       if (error) throw error;
-      toast.success("과제 삭제 완료");
+      toast.success("Assignment deleted successfully");
       fetchAssignments();
     } catch (error: any) {
-      toast.error("과제 삭제 실패: " + error.message);
+      toast.error("Failed to delete assignment: " + error.message);
     }
   };
 
@@ -307,7 +261,7 @@ const Admin = () => {
   const addQuestion = () => {
     setQuestions([...questions, {
       text: "",
-      options: ["", "", "", "", ""],
+      options: ["", "", "", ""],
       correctAnswer: 0,
       explanation: ""
     }]);
@@ -319,14 +273,14 @@ const Admin = () => {
       // Validate file size (10MB max)
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
       if (file.size > MAX_FILE_SIZE) {
-        toast.error("파일 크기가 10MB를 초과합니다");
+        toast.error("File size exceeds 10MB limit");
         return null;
       }
 
       // Validate file type
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'image/jpeg', 'image/png', 'image/gif'];
       if (!allowedTypes.includes(file.type)) {
-        toast.error("잘못된 파일 형식입니다. 허용: PDF, Word, PowerPoint, 이미지");
+        toast.error("Invalid file type. Allowed: PDF, Word, PowerPoint, Images");
         return null;
       }
       const fileExt = file.name.split('.').pop();
@@ -344,7 +298,7 @@ const Admin = () => {
       } = supabase.storage.from('assignment-files').getPublicUrl(filePath);
       return publicUrl;
     } catch (error: any) {
-      toast.error("파일 업로드 실패: " + error.message);
+      toast.error("Failed to upload file: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -370,21 +324,21 @@ const Admin = () => {
   };
   const handleCreateAssignment = async () => {
     if (!selectedInstructor) {
-      toast.error("강사를 선택해주세요");
+      toast.error("Please select an instructor");
       return;
     }
     if (!assignmentTitle.trim()) {
-      toast.error("과제 제목을 입력해주세요");
+      toast.error("Please enter an assignment title");
       return;
     }
     for (let i = 0; i < questions.length; i++) {
       if (!questions[i].text.trim()) {
-        toast.error(`문제 ${i + 1}의 내용을 입력해주세요`);
+        toast.error(`Question ${i + 1} text is required`);
         return;
       }
-      for (let j = 0; j < 5; j++) {
+      for (let j = 0; j < 4; j++) {
         if (!questions[i].options[j].trim()) {
-          toast.error(`문제 ${i + 1}, 선택지 ${j + 1}을 입력해주세요`);
+          toast.error(`Question ${i + 1}, Option ${j + 1} is required`);
           return;
         }
       }
@@ -413,7 +367,7 @@ const Admin = () => {
         error: questionsError
       } = await supabase.from("questions").insert(questionsToInsert);
       if (questionsError) throw questionsError;
-      toast.success("과제 생성 완료!");
+      toast.success("Assignment created successfully!");
       setSelectedInstructor("");
       setAssignmentTitle("");
       setDescription("");
@@ -421,13 +375,13 @@ const Admin = () => {
       setUploadedFile(null);
       setQuestions([{
         text: "",
-        options: ["", "", "", "", ""],
+        options: ["", "", "", ""],
         correctAnswer: 0,
         explanation: ""
       }]);
       fetchAssignments();
     } catch (error: any) {
-      toast.error("과제 생성 실패: " + error.message);
+      toast.error("Failed to create assignment: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -477,11 +431,11 @@ const Admin = () => {
             <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-3xl font-bold">관리자 대시보드</h1>
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           </div>
           <Button variant="outline" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
-            로그아웃
+            Logout
           </Button>
         </div>
 
@@ -489,32 +443,32 @@ const Admin = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div> : <Tabs defaultValue="users" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="users">사용자 관리</TabsTrigger>
-              <TabsTrigger value="create">과제 생성</TabsTrigger>
-              <TabsTrigger value="assignments">과제 목록</TabsTrigger>
-              <TabsTrigger value="grades">성적</TabsTrigger>
-              <TabsTrigger value="analytics">분석</TabsTrigger>
+              <TabsTrigger value="users">User Management</TabsTrigger>
+              <TabsTrigger value="create">Create Assignment</TabsTrigger>
+              <TabsTrigger value="assignments">Assignments</TabsTrigger>
+              <TabsTrigger value="grades">Grades</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="users" className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>승인 대기</CardTitle>
+                  <CardTitle>Pending Approval</CardTitle>
                   <CardDescription>
-                    신규 사용자 등록 검토 및 승인
+                    Review and approve new user registrations
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {pendingUsers.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                      승인 대기 중인 사용자가 없습니다
+                      No pending users
                     </p> : <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>이름</TableHead>
-                          <TableHead>이메일</TableHead>
-                          <TableHead>역할</TableHead>
-                          <TableHead>등록일</TableHead>
-                          <TableHead>작업</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Registered</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -523,34 +477,17 @@ const Admin = () => {
                               {user.full_name}
                             </TableCell>
                             <TableCell>{user.email || "N/A"}</TableCell>
-                            <TableCell>
-                              {user.role === "No role assigned" ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-destructive font-semibold">{user.role}</span>
-                                  <Select onValueChange={(role) => assignRole(user.id, role as "student" | "instructor")}>
-                                    <SelectTrigger className="w-32">
-                                      <SelectValue placeholder="역할 선택" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="student">Student</SelectItem>
-                                      <SelectItem value="instructor">Instructor</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              ) : (
-                                user.role
-                              )}
-                            </TableCell>
+                            <TableCell>{user.role}</TableCell>
                             <TableCell>
                               {new Date(user.created_at).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
                                 <Button size="sm" onClick={() => approveUser(user.id)}>
-                                  승인
+                                  Approve
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={() => rejectUser(user.id)}>
-                                  거부
+                                  Reject
                                 </Button>
                               </div>
                             </TableCell>
@@ -562,21 +499,21 @@ const Admin = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>학생</CardTitle>
+                  <CardTitle>Students</CardTitle>
                   <CardDescription>
-                    학생 계정 관리
+                    Manage student accounts
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {students.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                      등록된 학생이 없습니다
+                      No students found
                     </p> : <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>이름</TableHead>
-                          <TableHead>이메일</TableHead>
-                          <TableHead>등록일</TableHead>
-                          <TableHead>작업</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Registered</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -591,7 +528,7 @@ const Admin = () => {
                             <TableCell>
                               <div className="flex gap-2">
                                 <Button size="sm" variant="outline" onClick={() => revokeAccess(user.id)}>
-                                  접근 권한 취소
+                                  Revoke Access
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={() => deleteUser(user.id)}>
                                   <Trash2 className="h-4 w-4" />
@@ -606,21 +543,21 @@ const Admin = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>강사</CardTitle>
+                  <CardTitle>Instructors</CardTitle>
                   <CardDescription>
-                    강사 계정 관리
+                    Manage instructor accounts
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {instructors.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                      등록된 강사가 없습니다
+                      No instructors found
                     </p> : <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>이름</TableHead>
-                          <TableHead>이메일</TableHead>
-                          <TableHead>등록일</TableHead>
-                          <TableHead>작업</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Registered</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -635,7 +572,7 @@ const Admin = () => {
                             <TableCell>
                               <div className="flex gap-2">
                                 <Button size="sm" variant="outline" onClick={() => revokeAccess(user.id)}>
-                                  접근 권한 취소
+                                  Revoke Access
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={() => deleteUser(user.id)}>
                                   <Trash2 className="h-4 w-4" />
@@ -652,15 +589,15 @@ const Admin = () => {
             <TabsContent value="create">
               <Card>
                 <CardHeader>
-                  <CardTitle>과제 생성</CardTitle>
-                  <CardDescription>강사를 위한 새 과제 생성</CardDescription>
+                  <CardTitle>Create Assignment</CardTitle>
+                  <CardDescription>Create a new assignment for an instructor</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-2">
-                    <Label>강사 선택</Label>
+                    <Label>Select Instructor</Label>
                     <Select value={selectedInstructor} onValueChange={setSelectedInstructor}>
                       <SelectTrigger>
-                        <SelectValue placeholder="강사를 선택하세요" />
+                        <SelectValue placeholder="Choose an instructor" />
                       </SelectTrigger>
                       <SelectContent>
                         {instructorsList.map(instructor => <SelectItem key={instructor.id} value={instructor.id}>
@@ -671,22 +608,22 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="title">과제 제목</Label>
-                    <Input id="title" placeholder="과제 제목을 입력하세요" value={assignmentTitle} onChange={e => setAssignmentTitle(e.target.value)} />
+                    <Label htmlFor="title">Assignment Title</Label>
+                    <Input id="title" placeholder="Enter assignment title" value={assignmentTitle} onChange={e => setAssignmentTitle(e.target.value)} />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">설명 (선택)</Label>
-                    <Input id="description" placeholder="과제 설명을 입력하세요" value={description} onChange={e => setDescription(e.target.value)} />
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Input id="description" placeholder="Enter assignment description" value={description} onChange={e => setDescription(e.target.value)} />
                   </div>
 
                   <div className="space-y-2">
-                    <Label>마감일 (선택)</Label>
+                    <Label>Due Date (Optional)</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dueDate ? format(dueDate, "PPP") : "날짜 선택"}
+                          {dueDate ? format(dueDate, "PPP") : "Pick a date"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -696,7 +633,7 @@ const Admin = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="file">파일 업로드 (선택)</Label>
+                  <Label htmlFor="file">Upload File (Optional)</Label>
                   <div className="flex gap-2 items-center">
                     <Input id="file" type="file" accept="image/*,.pdf" onChange={async e => {
                     const file = e.target.files?.[0];
@@ -710,146 +647,80 @@ const Admin = () => {
                       </div>}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    이 과제에 첨부할 이미지나 PDF 파일을 업로드하세요
+                    Upload an image or PDF file to attach to this assignment
                   </p>
                 </div>
 
                 <div className="space-y-4">
-                    <Label>문제</Label>
+                    <Label>Questions</Label>
                     {/* Question Grid - 5 per row */}
                     <div className="grid grid-cols-5 gap-4">
-                      {questions.map((question, qIndex) => (
-                        <Card 
-                          key={qIndex}
-                          className={cn(
-                            "aspect-square cursor-pointer hover:shadow-md transition-all relative",
-                            expandedQuestion === qIndex && "ring-2 ring-primary shadow-lg"
-                          )}
-                          onClick={() => {
-                            setExpandedQuestion(expandedQuestion === qIndex ? null : qIndex);
-                          }}
-                        >
-                          {questions.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute top-2 right-2 h-8 w-8 hover:bg-destructive/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (expandedQuestion === qIndex) {
-                                  setExpandedQuestion(null);
-                                }
-                                removeQuestion(qIndex);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                      {questions.map((question, qIndex) => <Card key={qIndex} className="aspect-square cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
+                    document.getElementById(`question-form-${qIndex}`)?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center'
+                    });
+                  }}>
                           <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center">
-                            <span className="font-semibold text-xl">문제 {qIndex + 1}</span>
-                            {question.text && (
-                              <span className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                            <span className="font-semibold text-lg">Question {qIndex + 1}</span>
+                            {question.text && <span className="text-xs text-muted-foreground mt-2 line-clamp-2">
                                 {question.text}
-                              </span>
-                            )}
+                              </span>}
                           </CardContent>
-                        </Card>
-                      ))}
-                      
-                      {/* Add Question button */}
-                      <Card 
-                        className="aspect-square cursor-pointer border-dashed hover:border-solid hover:bg-accent/10 transition-all"
-                        onClick={addQuestion}
-                      >
-                        <CardContent className="p-4 flex flex-col items-center justify-center h-full">
-                          <Plus className="h-8 w-8 text-muted-foreground" />
-                          <span className="text-sm font-medium text-muted-foreground mt-2">문제 추가</span>
-                        </CardContent>
-                      </Card>
+                        </Card>)}
                     </div>
 
-                    {/* Full Question Form - only show expanded question */}
-                    {expandedQuestion !== null && questions[expandedQuestion] && (
-                      <div className="mt-6">
-                        <Card id={`question-form-${expandedQuestion}`} className="border rounded-lg">
+                    {/* Full Question Forms */}
+                    <div className="space-y-4 mt-6">
+                      {questions.map((question, qIndex) => <Card key={qIndex} id={`question-form-${qIndex}`} className="border rounded-lg">
                           <CardHeader>
                             <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg">문제 {expandedQuestion + 1}</CardTitle>
-                              {questions.length > 1 && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => {
-                                    removeQuestion(expandedQuestion);
-                                    setExpandedQuestion(null);
-                                  }}
-                                >
+                              <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
+                              {questions.length > 1 && <Button variant="ghost" size="sm" onClick={() => removeQuestion(qIndex)}>
                                   <Trash2 className="h-4 w-4 mr-2" />
-                                  문제 삭제
-                                </Button>
-                              )}
+                                  Remove Question
+                                </Button>}
                             </div>
                           </CardHeader>
                           <CardContent className="space-y-4">
                             <div className="space-y-2">
-                              <Label>문제 내용</Label>
-                              <Input 
-                                placeholder="문제 내용을 입력하세요" 
-                                value={questions[expandedQuestion].text} 
-                                onChange={e => updateQuestion(expandedQuestion, "text", e.target.value)} 
-                              />
+                              <Label>Question Text</Label>
+                              <Input placeholder="Enter question text" value={question.text} onChange={e => updateQuestion(qIndex, "text", e.target.value)} />
                             </div>
 
                             <div className="space-y-3">
-                              <RadioGroup 
-                                value={questions[expandedQuestion].correctAnswer.toString()} 
-                                onValueChange={value => updateQuestion(expandedQuestion, "correctAnswer", parseInt(value))}
-                              >
-                                {questions[expandedQuestion].options.map((option, oIndex) => (
-                                  <div key={oIndex} className="flex items-center gap-2">
-                                    <RadioGroupItem 
-                                      value={oIndex.toString()} 
-                                      id={`q${expandedQuestion}-o${oIndex}`} 
-                                      className="shrink-0" 
-                                    />
+                              <RadioGroup value={question.correctAnswer.toString()} onValueChange={value => updateQuestion(qIndex, "correctAnswer", parseInt(value))}>
+                                {question.options.map((option, oIndex) => <div key={oIndex} className="flex items-center gap-2">
+                                    <RadioGroupItem value={oIndex.toString()} id={`q${qIndex}-o${oIndex}`} className="shrink-0" />
                                     <div className="flex-1">
-                                      <Input 
-                                        placeholder={`선택지 ${oIndex + 1}`} 
-                                        value={option} 
-                                        onChange={e => updateOption(expandedQuestion, oIndex, e.target.value)} 
-                                      />
+                                      <Input placeholder={`Option ${oIndex + 1}`} value={option} onChange={e => updateOption(qIndex, oIndex, e.target.value)} />
                                     </div>
-                                    {questions[expandedQuestion].correctAnswer === oIndex && (
-                                      <span className="text-xs font-medium shrink-0 text-[#a5d160]">
-                                        ✓ 정답
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
+                                    {question.correctAnswer === oIndex && <span className="text-xs font-medium shrink-0 text-[#a5d160]">
+                                        ✓ Correct
+                                      </span>}
+                                  </div>)}
                               </RadioGroup>
                             </div>
 
                             <div className="space-y-2">
-                              <Label htmlFor={`explanation-${expandedQuestion}`}>설명 (선택)</Label>
-                              <Textarea 
-                                id={`explanation-${expandedQuestion}`} 
-                                placeholder="이 답이 정답인 이유를 설명하세요..." 
-                                value={questions[expandedQuestion].explanation} 
-                                onChange={e => updateQuestion(expandedQuestion, "explanation", e.target.value)} 
-                                rows={3} 
-                              />
+                              <Label htmlFor={`explanation-${qIndex}`}>Explanation (Optional)</Label>
+                              <Textarea id={`explanation-${qIndex}`} placeholder="Explain why this answer is correct..." value={question.explanation} onChange={e => updateQuestion(qIndex, "explanation", e.target.value)} rows={3} />
                             </div>
                           </CardContent>
-                        </Card>
-                      </div>
-                    )}
+                        </Card>)}
+                    </div>
+
+                    <Button onClick={addQuestion} variant="outline" className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Question
+                    </Button>
                   </div>
 
                   <Button onClick={handleCreateAssignment} className="w-full" disabled={submitting}>
                     {submitting ? <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        생성 중...
-                      </> : "과제 생성"}
+                        Creating...
+                      </> : "Create Assignment"}
                   </Button>
                 </CardContent>
               </Card>
@@ -858,23 +729,23 @@ const Admin = () => {
             <TabsContent value="assignments">
               <Card>
                 <CardHeader>
-                  <CardTitle>전체 과제</CardTitle>
+                  <CardTitle>All Assignments</CardTitle>
                   <CardDescription>
-                    강사가 생성한 과제 보기 및 관리
+                    View and manage assignments created by instructors
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {assignments.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                      등록된 과제가 없습니다
+                      No assignments found
                     </p> : <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>제목</TableHead>
-                          <TableHead>강사</TableHead>
-                          <TableHead>질문 수</TableHead>
-                          <TableHead>마감일</TableHead>
-                          <TableHead>생성일</TableHead>
-                          <TableHead>작업</TableHead>
+                          <TableHead>Title</TableHead>
+                          <TableHead>Instructor</TableHead>
+                          <TableHead>Questions</TableHead>
+                          <TableHead>Due Date</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -885,14 +756,14 @@ const Admin = () => {
                             <TableCell>{assignment.instructor.full_name}</TableCell>
                             <TableCell>{assignment.questions[0]?.count || 0}</TableCell>
                             <TableCell>
-                              {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : "마감일 없음"}
+                              {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : "No due date"}
                             </TableCell>
                             <TableCell>
                               {new Date(assignment.created_at).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
                               <Button size="sm" variant="destructive" onClick={() => deleteAssignment(assignment.id)}>
-                                삭제
+                                Delete
                               </Button>
                             </TableCell>
                           </TableRow>)}
@@ -905,22 +776,22 @@ const Admin = () => {
             <TabsContent value="grades">
               <Card>
                 <CardHeader>
-                  <CardTitle>전체 제출</CardTitle>
+                  <CardTitle>All Submissions</CardTitle>
                   <CardDescription>
-                    모든 과제에 대한 학생 제출 및 성적 보기
+                    View student submissions and grades across all assignments
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {submissions.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                      제출 내역이 없습니다
+                      No submissions found
                     </p> : <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>학생</TableHead>
-                          <TableHead>과제</TableHead>
-                          <TableHead>점수</TableHead>
-                          <TableHead>백분율</TableHead>
-                          <TableHead>제출일</TableHead>
+                        <TableRow className="text-[#38c538]">
+                          <TableHead>Student</TableHead>
+                          <TableHead>Assignment</TableHead>
+                          <TableHead>Score</TableHead>
+                          <TableHead>Percentage</TableHead>
+                          <TableHead>Submitted</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -930,7 +801,7 @@ const Admin = () => {
                             </TableCell>
                             <TableCell>{submission.assignment.title}</TableCell>
                             <TableCell>
-                              {submission.score !== null ? `${submission.score}/${submission.total_questions}` : "대기 중"}
+                              {submission.score !== null ? `${submission.score}/${submission.total_questions}` : "Pending"}
                             </TableCell>
                             <TableCell>
                               {submission.score !== null ? `${Math.round(submission.score / submission.total_questions * 100)}%` : "N/A"}
@@ -951,7 +822,7 @@ const Admin = () => {
                 <div className="grid gap-4 md:grid-cols-4">
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">평균 점수</CardTitle>
+                      <CardTitle className="text-sm font-medium">Average Score</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">{calculateOverallStats().averageScore}%</div>
@@ -959,7 +830,7 @@ const Admin = () => {
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">전체 제출</CardTitle>
+                      <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">{calculateOverallStats().totalSubmissions}</div>
@@ -967,7 +838,7 @@ const Admin = () => {
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">완료</CardTitle>
+                      <CardTitle className="text-sm font-medium">Completed</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">{calculateOverallStats().completedSubmissions}</div>
@@ -975,7 +846,7 @@ const Admin = () => {
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">완료율</CardTitle>
+                      <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold">{calculateOverallStats().completionRate}%</div>
@@ -988,15 +859,15 @@ const Admin = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
-                      과제별 분석
+                      Assignment Analytics
                     </CardTitle>
                     <CardDescription>
-                      각 과제에 대한 상세 점수 분석
+                      Detailed score analysis for each assignment
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {assignments.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                        등록된 과제가 없습니다
+                        No assignments found
                       </p> : <div className="space-y-6">
                         {assignments.map(assignment => {
                     const stats = getAssignmentStats(assignment.id);
@@ -1004,29 +875,29 @@ const Admin = () => {
                               <CardHeader>
                                 <CardTitle className="text-lg">{assignment.title}</CardTitle>
                                 <CardDescription>
-                                  작성자: {assignment.instructor.full_name}
+                                  By {assignment.instructor.full_name}
                                 </CardDescription>
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 <div className="grid gap-4 md:grid-cols-3">
                                   <div>
-                                    <p className="text-sm text-muted-foreground">평균 점수</p>
+                                    <p className="text-sm text-muted-foreground">Average Score</p>
                                     <p className="text-2xl font-bold">{stats.averageScore}%</p>
                                   </div>
                                   <div>
-                                    <p className="text-sm text-muted-foreground">제출</p>
+                                    <p className="text-sm text-muted-foreground">Submissions</p>
                                     <p className="text-2xl font-bold">
                                       {stats.completedSubmissions}/{stats.totalSubmissions}
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-sm text-muted-foreground">완료율</p>
+                                    <p className="text-sm text-muted-foreground">Completion Rate</p>
                                     <p className="text-2xl font-bold">{stats.completionRate}%</p>
                                   </div>
                                 </div>
 
                                 <div>
-                                  <p className="text-sm font-medium mb-2">성적 분포</p>
+                                  <p className="text-sm font-medium mb-2">Grade Distribution</p>
                                   <div className="space-y-2">
                                     {Object.entries(stats.gradeDistribution).map(([grade, count]) => <div key={grade} className="flex items-center gap-2">
                                         <span className="text-sm font-medium w-8">{grade}:</span>
