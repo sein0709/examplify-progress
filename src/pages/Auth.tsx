@@ -217,29 +217,34 @@ const Auth = () => {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label>I am a...</Label>
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">I am a...</Label>
                 <RadioGroup
                   value={signUpData.role}
                   onValueChange={(value: "instructor" | "student") =>
                     setSignUpData({ ...signUpData, role: value })
                   }
+                  className="gap-3"
                 >
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3 rounded-lg border-2 border-border bg-card p-4 transition-all hover:border-primary hover:bg-accent/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:shadow-sm">
                     <RadioGroupItem value="student" id="student" />
-                    <Label htmlFor="student" className="font-normal cursor-pointer">
+                    <Label htmlFor="student" className="flex-1 font-medium cursor-pointer text-base">
                       Student
                     </Label>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3 rounded-lg border-2 border-border bg-card p-4 transition-all hover:border-primary hover:bg-accent/50 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:checked]:shadow-sm">
                     <RadioGroupItem value="instructor" id="instructor" />
-                    <Label htmlFor="instructor" className="font-normal cursor-pointer">
+                    <Label htmlFor="instructor" className="flex-1 font-medium cursor-pointer text-base">
                       Instructor
                     </Label>
                   </div>
                 </RadioGroup>
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all" 
+                disabled={loading}
+              >
                 {loading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
