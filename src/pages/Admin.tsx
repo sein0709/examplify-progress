@@ -4,7 +4,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -56,11 +64,23 @@ interface Submission {
   };
   assignment: {
     title: string;
+    id: string;
   };
 }
 
+interface QuestionForm {
+  text: string;
+  options: string[];
+  correctAnswer: number;
+}
+
+interface Instructor {
+  id: string;
+  full_name: string;
+}
+
 const Admin = () => {
-  const { hasRole } = useAuth();
+  const { hasRole, signOut } = useAuth();
   const navigate = useNavigate();
   const [pendingUsers, setPendingUsers] = useState<UserWithEmail[]>([]);
   const [students, setStudents] = useState<UserWithEmail[]>([]);
@@ -68,6 +88,17 @@ const Admin = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Create Assignment States
+  const [instructorsList, setInstructorsList] = useState<Instructor[]>([]);
+  const [selectedInstructor, setSelectedInstructor] = useState<string>("");
+  const [assignmentTitle, setAssignmentTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState<Date>();
+  const [questions, setQuestions] = useState<QuestionForm[]>([
+    { text: "", options: ["", "", "", ""], correctAnswer: 0 },
+  ]);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -125,7 +156,7 @@ const Admin = () => {
         .select(`
           *,
           student:profiles!student_id(full_name),
-          assignment:assignments(title)
+          assignment:assignments(title, id)
         `)
         .order("submitted_at", { ascending: false });
 
@@ -138,6 +169,31 @@ const Admin = () => {
     }
   };
 
+  const fetchInstructors = async () => {
+    try {
+      const { data: roles, error: rolesError } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "instructor");
+
+      if (rolesError) throw rolesError;
+
+      const instructorIds = roles.map(r => r.user_id);
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", instructorIds)
+        .eq("verified", true);
+
+      if (profilesError) throw profilesError;
+
+      setInstructorsList(profiles || []);
+    } catch (error: any) {
+      toast.error("Failed to fetch instructors: " + error.message);
+    }
+  };
+
   useEffect(() => {
     if (!hasRole("admin")) {
       navigate("/");
@@ -145,6 +201,7 @@ const Admin = () => {
       fetchUsers();
       fetchAssignments();
       fetchSubmissions();
+      fetchInstructors();
     }
   }, [hasRole, navigate]);
 
@@ -235,6 +292,149 @@ const Admin = () => {
     }
   };
 
+  // Create Assignment Functions
+  const addQuestion = () => {
+    setQuestions([...questions, { text: "", options: ["", "", "", ""], correctAnswer: 0 }]);
+  };
+
+  const removeQuestion = (index: number) => {
+    if (questions.length > 1) {
+      setQuestions(questions.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateQuestion = (index: number, field: keyof QuestionForm, value: any) => {
+    const newQuestions = [...questions];
+    newQuestions[index] = { ...newQuestions[index], [field]: value };
+    setQuestions(newQuestions);
+  };
+
+  const updateOption = (questionIndex: number, optionIndex: number, value: string) => {
+    const newQuestions = [...questions];
+    newQuestions[questionIndex].options[optionIndex] = value;
+    setQuestions(newQuestions);
+  };
+
+  const handleCreateAssignment = async () => {
+    if (!selectedInstructor) {
+      toast.error("Please select an instructor");
+      return;
+    }
+
+    if (!assignmentTitle.trim()) {
+      toast.error("Please enter an assignment title");
+      return;
+    }
+
+    for (let i = 0; i < questions.length; i++) {
+      if (!questions[i].text.trim()) {
+        toast.error(`Question ${i + 1} text is required`);
+        return;
+      }
+      for (let j = 0; j < 4; j++) {
+        if (!questions[i].options[j].trim()) {
+          toast.error(`Question ${i + 1}, Option ${j + 1} is required`);
+          return;
+        }
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      const { data: assignment, error: assignmentError } = await supabase
+        .from("assignments")
+        .insert({
+          title: assignmentTitle,
+          description: description || null,
+          instructor_id: selectedInstructor,
+          due_date: dueDate?.toISOString() || null,
+        })
+        .select()
+        .single();
+
+      if (assignmentError) throw assignmentError;
+
+      const questionsToInsert = questions.map((q, index) => ({
+        assignment_id: assignment.id,
+        text: q.text,
+        options: q.options,
+        correct_answer: q.correctAnswer,
+        order_number: index,
+      }));
+
+      const { error: questionsError } = await supabase
+        .from("questions")
+        .insert(questionsToInsert);
+
+      if (questionsError) throw questionsError;
+
+      toast.success("Assignment created successfully!");
+      setSelectedInstructor("");
+      setAssignmentTitle("");
+      setDescription("");
+      setDueDate(undefined);
+      setQuestions([{ text: "", options: ["", "", "", ""], correctAnswer: 0 }]);
+      fetchAssignments();
+    } catch (error: any) {
+      toast.error("Failed to create assignment: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Analytics Functions
+  const calculateOverallStats = () => {
+    const completedSubmissions = submissions.filter(s => s.score !== null);
+    const totalScore = completedSubmissions.reduce((sum, s) => sum + (s.score || 0), 0);
+    const totalPossible = completedSubmissions.reduce((sum, s) => sum + s.total_questions, 0);
+    
+    return {
+      averageScore: totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0,
+      totalSubmissions: submissions.length,
+      completedSubmissions: completedSubmissions.length,
+      completionRate: submissions.length > 0 
+        ? Math.round((completedSubmissions.length / submissions.length) * 100) 
+        : 0,
+    };
+  };
+
+  const getAssignmentStats = (assignmentId: string) => {
+    const assignmentSubmissions = submissions.filter(s => s.assignment.id === assignmentId);
+    const completedSubmissions = assignmentSubmissions.filter(s => s.score !== null);
+    
+    const scores = completedSubmissions.map(s => 
+      s.score !== null ? Math.round((s.score / s.total_questions) * 100) : 0
+    );
+    
+    const totalStudents = students.length;
+    const averageScore = scores.length > 0 
+      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) 
+      : 0;
+    
+    const gradeDistribution = {
+      A: scores.filter(s => s >= 90).length,
+      B: scores.filter(s => s >= 80 && s < 90).length,
+      C: scores.filter(s => s >= 70 && s < 80).length,
+      D: scores.filter(s => s >= 60 && s < 70).length,
+      F: scores.filter(s => s < 60).length,
+    };
+
+    return {
+      totalSubmissions: assignmentSubmissions.length,
+      completedSubmissions: completedSubmissions.length,
+      completionRate: totalStudents > 0 
+        ? Math.round((assignmentSubmissions.length / totalStudents) * 100) 
+        : 0,
+      averageScore,
+      gradeDistribution,
+    };
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -245,6 +445,10 @@ const Admin = () => {
             </Button>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           </div>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
         </div>
 
         {loading ? (
@@ -255,8 +459,10 @@ const Admin = () => {
           <Tabs defaultValue="users" className="space-y-4">
             <TabsList>
               <TabsTrigger value="users">User Management</TabsTrigger>
+              <TabsTrigger value="create">Create Assignment</TabsTrigger>
               <TabsTrigger value="assignments">Assignments</TabsTrigger>
               <TabsTrigger value="grades">Grades</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
 
             <TabsContent value="users" className="space-y-6">
@@ -436,6 +642,146 @@ const Admin = () => {
               </Card>
             </TabsContent>
 
+            <TabsContent value="create">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create Assignment</CardTitle>
+                  <CardDescription>Create a new assignment for an instructor</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Select Instructor</Label>
+                    <Select value={selectedInstructor} onValueChange={setSelectedInstructor}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose an instructor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {instructorsList.map((instructor) => (
+                          <SelectItem key={instructor.id} value={instructor.id}>
+                            {instructor.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Assignment Title</Label>
+                    <Input
+                      id="title"
+                      placeholder="Enter assignment title"
+                      value={assignmentTitle}
+                      onChange={(e) => setAssignmentTitle(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Input
+                      id="description"
+                      placeholder="Enter assignment description"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Due Date (Optional)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dueDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dueDate ? format(dueDate, "PPP") : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dueDate}
+                          onSelect={setDueDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label>Questions</Label>
+                    {questions.map((question, qIndex) => (
+                      <Card key={qIndex}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">Question {qIndex + 1}</CardTitle>
+                            {questions.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeQuestion(qIndex)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <Input
+                            placeholder="Enter question text"
+                            value={question.text}
+                            onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
+                          />
+
+                          <RadioGroup
+                            value={question.correctAnswer.toString()}
+                            onValueChange={(value) =>
+                              updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                            }
+                          >
+                            {question.options.map((option, oIndex) => (
+                              <div key={oIndex} className="flex items-center gap-2">
+                                <RadioGroupItem
+                                  value={oIndex.toString()}
+                                  id={`q${qIndex}-o${oIndex}`}
+                                />
+                                <Input
+                                  placeholder={`Option ${oIndex + 1}`}
+                                  value={option}
+                                  onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                                  className="flex-1"
+                                />
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </CardContent>
+                      </Card>
+                    ))}
+
+                    <Button onClick={addQuestion} variant="outline" className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Question
+                    </Button>
+                  </div>
+
+                  <Button onClick={handleCreateAssignment} className="w-full" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Assignment"
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="assignments">
               <Card>
                 <CardHeader>
@@ -548,6 +894,135 @@ const Admin = () => {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="analytics">
+              <div className="space-y-6">
+                {/* Overall Statistics */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{calculateOverallStats().averageScore}%</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{calculateOverallStats().totalSubmissions}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{calculateOverallStats().completedSubmissions}</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{calculateOverallStats().completionRate}%</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Per-Assignment Analytics */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      Assignment Analytics
+                    </CardTitle>
+                    <CardDescription>
+                      Detailed score analysis for each assignment
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {assignments.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        No assignments found
+                      </p>
+                    ) : (
+                      <div className="space-y-6">
+                        {assignments.map((assignment) => {
+                          const stats = getAssignmentStats(assignment.id);
+                          return (
+                            <Card key={assignment.id}>
+                              <CardHeader>
+                                <CardTitle className="text-lg">{assignment.title}</CardTitle>
+                                <CardDescription>
+                                  By {assignment.instructor.full_name}
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="grid gap-4 md:grid-cols-3">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Average Score</p>
+                                    <p className="text-2xl font-bold">{stats.averageScore}%</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Submissions</p>
+                                    <p className="text-2xl font-bold">
+                                      {stats.completedSubmissions}/{stats.totalSubmissions}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Completion Rate</p>
+                                    <p className="text-2xl font-bold">{stats.completionRate}%</p>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <p className="text-sm font-medium mb-2">Grade Distribution</p>
+                                  <div className="space-y-2">
+                                    {Object.entries(stats.gradeDistribution).map(([grade, count]) => (
+                                      <div key={grade} className="flex items-center gap-2">
+                                        <span className="text-sm font-medium w-8">{grade}:</span>
+                                        <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
+                                          <div
+                                            className={cn(
+                                              "h-full flex items-center justify-end px-2 text-xs font-medium text-white",
+                                              grade === "A" && "bg-green-500",
+                                              grade === "B" && "bg-blue-500",
+                                              grade === "C" && "bg-yellow-500",
+                                              grade === "D" && "bg-orange-500",
+                                              grade === "F" && "bg-red-500"
+                                            )}
+                                            style={{
+                                              width: stats.completedSubmissions > 0
+                                                ? `${(count / stats.completedSubmissions) * 100}%`
+                                                : "0%",
+                                            }}
+                                          >
+                                            {count > 0 && count}
+                                          </div>
+                                        </div>
+                                        <span className="text-sm text-muted-foreground w-12">
+                                          {stats.completedSubmissions > 0
+                                            ? `${Math.round((count / stats.completedSubmissions) * 100)}%`
+                                            : "0%"}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         )}
