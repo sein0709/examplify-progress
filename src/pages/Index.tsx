@@ -79,7 +79,7 @@ const Index = () => {
             <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
               <div className="p-8">
                 <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-                  <UserCircle className="h-10 w-10 text-primary" />
+                  <UserCircle className="h-10 w-10" style={{ color: '#474747' }} />
                 </div>
                 <h3 className="mb-3 text-2xl font-bold text-foreground">Student Portal</h3>
                 <p className="mb-6 text-muted-foreground">
@@ -101,7 +101,7 @@ const Index = () => {
             <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
               <div className="p-8">
                 <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/20">
-                  <FileText className="h-10 w-10 text-primary" />
+                  <FileText className="h-10 w-10" style={{ color: '#474747' }} />
                 </div>
                 <h3 className="mb-3 text-2xl font-bold text-foreground">Instructor Portal</h3>
                 <p className="mb-6 text-muted-foreground">
@@ -123,7 +123,7 @@ const Index = () => {
             <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
               <div className="p-8">
                 <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/30">
-                  <Shield className="h-10 w-10 text-primary" />
+                  <Shield className="h-10 w-10" style={{ color: '#474747' }} />
                 </div>
                 <h3 className="mb-3 text-2xl font-bold text-foreground">Admin Portal</h3>
                 <p className="mb-6 text-muted-foreground">
@@ -148,7 +148,7 @@ const Index = () => {
             <Card className="p-6 text-center">
               <div className="mb-4 flex justify-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <BookOpen className="h-6 w-6 text-primary" />
+                  <BookOpen className="h-6 w-6" style={{ color: '#474747' }} />
                 </div>
               </div>
               <h4 className="mb-2 font-semibold text-foreground">TOEFL-Style Interface</h4>
@@ -160,7 +160,7 @@ const Index = () => {
             <Card className="p-6 text-center">
               <div className="mb-4 flex justify-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/20">
-                  <FileText className="h-6 w-6 text-primary" />
+                  <FileText className="h-6 w-6" style={{ color: '#474747' }} />
                 </div>
               </div>
               <h4 className="mb-2 font-semibold text-foreground">Easy Assignment Creation</h4>
@@ -172,7 +172,7 @@ const Index = () => {
             <Card className="p-6 text-center">
               <div className="mb-4 flex justify-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <UserCircle className="h-6 w-6 text-primary" />
+                  <UserCircle className="h-6 w-6" style={{ color: '#474747' }} />
                 </div>
               </div>
               <h4 className="mb-2 font-semibold text-foreground">Progress Tracking</h4>
