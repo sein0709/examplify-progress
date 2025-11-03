@@ -758,7 +758,7 @@ const Student = () => {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-2">
                             <CardTitle className="text-xl flex items-center gap-2">
-                              <BookOpen className="h-5 w-5 text-primary" />
+                              <BookOpen className="h-5 w-5" color="#474747" />
                               {assignment.title}
                             </CardTitle>
                             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
