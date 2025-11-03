@@ -47,6 +47,7 @@ interface Submission {
   score: number | null;
   total_questions: number;
   submitted_at: string;
+  student_id: string;
   student: {
     full_name: string;
   };
@@ -495,10 +496,11 @@ const Admin = () => {
       D: scores.filter(s => s >= 60 && s < 70).length,
       F: scores.filter(s => s < 60).length
     };
+    const uniqueStudents = new Set(assignmentSubmissions.map(s => s.student_id)).size;
     return {
       totalSubmissions: assignmentSubmissions.length,
       completedSubmissions: completedSubmissions.length,
-      completionRate: totalStudents > 0 ? Math.round(assignmentSubmissions.length / totalStudents * 100) : 0,
+      completionRate: totalStudents > 0 ? Math.round(uniqueStudents / totalStudents * 100) : 0,
       averageScore,
       gradeDistribution
     };
