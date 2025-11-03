@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -93,6 +94,8 @@ const Admin = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isResubmittable, setIsResubmittable] = useState(false);
+  const [maxAttempts, setMaxAttempts] = useState<number>(1);
   const fetchUsers = async () => {
     try {
       const {
@@ -391,6 +394,18 @@ const Admin = () => {
     }
     setSubmitting(true);
     try {
+      // Upload file if present
+      let fileUrl = null;
+      let fileType = null;
+      if (uploadedFile) {
+        fileUrl = await handleFileUpload(uploadedFile);
+        if (!fileUrl) {
+          setSubmitting(false);
+          return; // File upload failed, abort
+        }
+        fileType = uploadedFile.type;
+      }
+
       const {
         data: assignment,
         error: assignmentError
@@ -398,7 +413,11 @@ const Admin = () => {
         title: assignmentTitle,
         description: description || null,
         instructor_id: selectedInstructor,
-        due_date: dueDate?.toISOString() || null
+        due_date: dueDate?.toISOString() || null,
+        file_url: fileUrl,
+        file_type: fileType,
+        is_resubmittable: isResubmittable,
+        max_attempts: isResubmittable ? maxAttempts : null,
       }).select().single();
       if (assignmentError) throw assignmentError;
       const questionsToInsert = questions.map((q, index) => ({
@@ -418,6 +437,8 @@ const Admin = () => {
       setAssignmentTitle("");
       setDescription("");
       setDueDate(undefined);
+      setIsResubmittable(false);
+      setMaxAttempts(1);
       setUploadedFile(null);
       setQuestions([{
         text: "",
@@ -712,6 +733,36 @@ const Admin = () => {
                   <p className="text-xs text-muted-foreground">
                     이 과제에 첨부할 이미지나 PDF 파일을 업로드하세요
                   </p>
+                </div>
+
+                <div className="space-y-4 border-t pt-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="resubmittable"
+                      checked={isResubmittable}
+                      onCheckedChange={(checked) => setIsResubmittable(checked as boolean)}
+                    />
+                    <Label htmlFor="resubmittable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      학생이 이 과제를 다시 제출할 수 있도록 허용
+                    </Label>
+                  </div>
+                  
+                  {isResubmittable && (
+                    <div className="space-y-2 pl-6">
+                      <Label htmlFor="maxAttempts">최대 제출 횟수</Label>
+                      <Input
+                        id="maxAttempts"
+                        type="number"
+                        min="1"
+                        value={maxAttempts}
+                        onChange={(e) => setMaxAttempts(Math.max(1, parseInt(e.target.value) || 1))}
+                        placeholder="제출 횟수 입력"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        학생들은 이 과제를 최대 {maxAttempts}회까지 제출할 수 있습니다
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
