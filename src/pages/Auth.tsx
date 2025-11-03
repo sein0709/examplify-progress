@@ -54,14 +54,22 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Insert the role into user_roles table
+        // Insert the role into user_roles table - this is CRITICAL
         const { error: roleError } = await supabase.from("user_roles").insert({
           user_id: data.user.id,
           role: validatedData.role,
         });
 
         if (roleError) {
+          // Role assignment is critical - if it fails, inform the user
           console.error("Error assigning role:", roleError);
+          toast({
+            title: "Account Created with Warning",
+            description: "Your account was created but role assignment failed. Please contact an administrator.",
+            variant: "destructive",
+          });
+          navigate("/pending-approval");
+          return;
         }
 
         toast({

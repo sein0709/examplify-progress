@@ -191,6 +191,20 @@ const Admin = () => {
   }, [hasRole, navigate]);
   const approveUser = async (userId: string) => {
     try {
+      // Check if user has a role assigned
+      const { data: userRole, error: roleCheckError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (roleCheckError) throw roleCheckError;
+
+      if (!userRole) {
+        toast.error("이 사용자에게 역할이 할당되지 않았습니다. 역할을 먼저 할당해주세요.");
+        return;
+      }
+
       const {
         error
       } = await supabase.from("profiles").update({
@@ -201,6 +215,37 @@ const Admin = () => {
       fetchUsers();
     } catch (error: any) {
       toast.error("사용자 승인 실패: " + error.message);
+    }
+  };
+
+  const assignRole = async (userId: string, role: "student" | "instructor") => {
+    try {
+      // Check if user already has a role
+      const { data: existingRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (existingRole) {
+        // Update existing role
+        const { error } = await supabase
+          .from("user_roles")
+          .update({ role })
+          .eq("user_id", userId);
+        if (error) throw error;
+      } else {
+        // Insert new role
+        const { error } = await supabase
+          .from("user_roles")
+          .insert({ user_id: userId, role });
+        if (error) throw error;
+      }
+
+      toast.success("역할 할당 완료");
+      fetchUsers();
+    } catch (error: any) {
+      toast.error("역할 할당 실패: " + error.message);
     }
   };
   const rejectUser = async (userId: string) => {
@@ -478,7 +523,24 @@ const Admin = () => {
                               {user.full_name}
                             </TableCell>
                             <TableCell>{user.email || "N/A"}</TableCell>
-                            <TableCell>{user.role}</TableCell>
+                            <TableCell>
+                              {user.role === "No role assigned" ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-destructive font-semibold">{user.role}</span>
+                                  <Select onValueChange={(role) => assignRole(user.id, role as "student" | "instructor")}>
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue placeholder="역할 선택" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="student">Student</SelectItem>
+                                      <SelectItem value="instructor">Instructor</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ) : (
+                                user.role
+                              )}
+                            </TableCell>
                             <TableCell>
                               {new Date(user.created_at).toLocaleDateString()}
                             </TableCell>
