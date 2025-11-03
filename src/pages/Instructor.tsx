@@ -367,95 +367,111 @@ const Instructor = () => {
 
               <div className="space-y-4">
                   <Label>Questions</Label>
-                  <Accordion type="single" collapsible className="w-full space-y-2">
+                  <div className="grid grid-cols-5 gap-4">
                     {questions.map((question, qIndex) => (
-                      <AccordionItem key={qIndex} value={`question-${qIndex}`} className="border rounded-lg">
-                        <AccordionTrigger className="px-4 hover:no-underline hover:bg-accent rounded-t-lg">
-                          <div className="flex items-center justify-between w-full pr-4">
-                            <span className="font-semibold">Question {qIndex + 1}</span>
-                            {question.text && (
-                              <span className="text-sm text-muted-foreground truncate ml-4 max-w-md">
-                                {question.text}
-                              </span>
-                            )}
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-4 pb-4">
-                          <div className="space-y-4 pt-4">
-                            {questions.length > 1 && (
-                              <div className="flex justify-end">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeQuestion(qIndex)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Remove Question
-                                </Button>
-                              </div>
-                            )}
-                            
-                            <div className="space-y-2">
-                              <Label>Question Text</Label>
-                              <Input
-                                placeholder="Enter question text"
-                                value={question.text}
-                                onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
-                              />
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                                <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                  Click the radio button to mark the correct answer
-                                </Label>
-                              </div>
-                              <RadioGroup
-                                value={question.correctAnswer.toString()}
-                                onValueChange={(value) =>
-                                  updateQuestion(qIndex, "correctAnswer", parseInt(value))
-                                }
-                              >
-                                {question.options.map((option, oIndex) => (
-                                  <div key={oIndex} className="flex items-center gap-2">
-                                    <RadioGroupItem
-                                      value={oIndex.toString()}
-                                      id={`q${qIndex}-o${oIndex}`}
-                                      className="shrink-0"
-                                    />
-                                    <div className="flex-1">
-                                      <Input
-                                        placeholder={`Option ${oIndex + 1}`}
-                                        value={option}
-                                        onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                                      />
-                                    </div>
-                                    {question.correctAnswer === oIndex && (
-                                      <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
-                                        ✓ Correct
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </RadioGroup>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor={`explanation-${qIndex}`}>Explanation (Optional)</Label>
-                              <Textarea
-                                id={`explanation-${qIndex}`}
-                                placeholder="Explain why this answer is correct..."
-                                value={question.explanation}
-                                onChange={(e) => updateQuestion(qIndex, "explanation", e.target.value)}
-                                rows={3}
-                              />
-                            </div>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
+                      <Card 
+                        key={qIndex} 
+                        className="aspect-square flex flex-col border-2 hover:border-accent transition-colors cursor-pointer"
+                        onClick={() => {
+                          const element = document.getElementById(`question-form-${qIndex}`);
+                          element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }}
+                      >
+                        <CardHeader className="flex-1 flex items-center justify-center p-4">
+                          <CardTitle className="text-center">
+                            Question {qIndex + 1}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0">
+                          {question.text && (
+                            <p className="text-xs text-muted-foreground text-center line-clamp-2">
+                              {question.text}
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
                     ))}
-                  </Accordion>
+                  </div>
+
+                  <div className="space-y-6 mt-8">
+                    {questions.map((question, qIndex) => (
+                      <Card key={qIndex} id={`question-form-${qIndex}`} className="border-2">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle>Question {qIndex + 1}</CardTitle>
+                            {questions.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeQuestion(qIndex)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Question Text</Label>
+                            <Input
+                              placeholder="Enter question text"
+                              value={question.text}
+                              onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                              <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                Click the radio button to mark the correct answer
+                              </Label>
+                            </div>
+                            <RadioGroup
+                              value={question.correctAnswer.toString()}
+                              onValueChange={(value) =>
+                                updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                              }
+                            >
+                              {question.options.map((option, oIndex) => (
+                                <div key={oIndex} className="flex items-center gap-2">
+                                  <RadioGroupItem
+                                    value={oIndex.toString()}
+                                    id={`q${qIndex}-o${oIndex}`}
+                                    className="shrink-0"
+                                  />
+                                  <div className="flex-1">
+                                    <Input
+                                      placeholder={`Option ${oIndex + 1}`}
+                                      value={option}
+                                      onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                                    />
+                                  </div>
+                                  {question.correctAnswer === oIndex && (
+                                    <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
+                                      ✓ Correct
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`explanation-${qIndex}`}>Explanation (Optional)</Label>
+                            <Textarea
+                              id={`explanation-${qIndex}`}
+                              placeholder="Explain why this answer is correct..."
+                              value={question.explanation}
+                              onChange={(e) => updateQuestion(qIndex, "explanation", e.target.value)}
+                              rows={3}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
 
                   <Button onClick={addQuestion} variant="outline" className="w-full">
                     <Plus className="h-4 w-4 mr-2" />
