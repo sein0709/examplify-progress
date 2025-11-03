@@ -159,7 +159,7 @@ const Index = () => {
 
             <Card className="p-6 text-center">
               <div className="mb-4 flex justify-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent/20">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: '#F7EFE6' }}>
                   <FileText className="h-6 w-6" style={{ color: '#474747' }} />
                 </div>
               </div>
