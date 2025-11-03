@@ -174,30 +174,49 @@ const Student = () => {
 
     setSubmitting(true);
     try {
-      let score = 0;
-      currentAssignment.questions.forEach((question, index) => {
-        if (selectedAnswers[index] === question.correct_answer) {
-          score++;
-        }
-      });
+      // Prepare student answers for the edge function
+      const studentAnswers = currentAssignment.questions.map((question, index) => ({
+        question_id: question.id,
+        selected_answer: selectedAnswers[index],
+      }));
 
+      // Calculate score on the server
+      const { data: scoreData, error: scoreError } = await supabase.functions.invoke(
+        'calculate-submission-score',
+        {
+          body: {
+            assignment_id: currentAssignment.id,
+            student_answers: studentAnswers,
+          },
+        }
+      );
+
+      if (scoreError) {
+        console.error("Score calculation error:", scoreError);
+        throw new Error("Failed to calculate score");
+      }
+
+      const { score: finalScore, total_questions: totalQuestions } = scoreData;
+
+      // Create submission record
       const { data: submission, error: submissionError } = await supabase
         .from("submissions")
         .insert({
           assignment_id: currentAssignment.id,
           student_id: user.id,
-          score,
-          total_questions: currentAssignment.questions.length,
+          score: finalScore,
+          total_questions: totalQuestions,
         })
         .select()
         .single();
 
       if (submissionError) throw submissionError;
 
-      const answersToInsert = currentAssignment.questions.map((question, index) => ({
+      // Insert individual answers
+      const answersToInsert = studentAnswers.map((answer) => ({
         submission_id: submission.id,
-        question_id: question.id,
-        selected_answer: selectedAnswers[index],
+        question_id: answer.question_id,
+        selected_answer: answer.selected_answer,
       }));
 
       const { error: answersError } = await supabase
@@ -205,6 +224,23 @@ const Student = () => {
         .insert(answersToInsert);
 
       if (answersError) throw answersError;
+
+      // Fetch questions WITH correct answers for results display
+      const { data: questionsWithAnswers } = await supabase.rpc(
+        "get_assignment_questions",
+        {
+          _assignment_id: currentAssignment.id,
+          _include_answers: true,
+        }
+      );
+
+      // Update current assignment with questions that include correct answers
+      if (questionsWithAnswers) {
+        setCurrentAssignment({
+          ...currentAssignment,
+          questions: questionsWithAnswers as Question[],
+        });
+      }
 
       toast.success("Assignment submitted successfully!");
       setShowResults(true);
@@ -218,6 +254,8 @@ const Student = () => {
   };
 
   const calculateScore = () => {
+    // Score calculation now happens server-side for security
+    // This function is kept for displaying results after submission
     if (!currentAssignment) return 0;
     let score = 0;
     currentAssignment.questions.forEach((question, index) => {

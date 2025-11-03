@@ -1,1 +1,4 @@
 project_id = "qxrvanphihdjyjzwjfyx"
+
+[functions.calculate-submission-score]
+verify_jwt = true
