@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
@@ -489,20 +491,47 @@ const Admin = () => {
     const scores = completedSubmissions.map(s => s.score !== null ? Math.round(s.score / s.total_questions * 100) : 0);
     const totalStudents = students.length;
     const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-    const gradeDistribution = {
-      A: scores.filter(s => s >= 90).length,
-      B: scores.filter(s => s >= 80 && s < 90).length,
-      C: scores.filter(s => s >= 70 && s < 80).length,
-      D: scores.filter(s => s >= 60 && s < 70).length,
-      F: scores.filter(s => s < 60).length
+    
+    // Create histogram bins for score distribution
+    const scoreDistribution: { [key: string]: number } = {
+      '0-9': 0,
+      '10-19': 0,
+      '20-29': 0,
+      '30-39': 0,
+      '40-49': 0,
+      '50-59': 0,
+      '60-69': 0,
+      '70-79': 0,
+      '80-89': 0,
+      '90-100': 0
     };
+    
+    scores.forEach(score => {
+      if (score < 10) scoreDistribution['0-9']++;
+      else if (score < 20) scoreDistribution['10-19']++;
+      else if (score < 30) scoreDistribution['20-29']++;
+      else if (score < 40) scoreDistribution['30-39']++;
+      else if (score < 50) scoreDistribution['40-49']++;
+      else if (score < 60) scoreDistribution['50-59']++;
+      else if (score < 70) scoreDistribution['60-69']++;
+      else if (score < 80) scoreDistribution['70-79']++;
+      else if (score < 90) scoreDistribution['80-89']++;
+      else scoreDistribution['90-100']++;
+    });
+    
+    const chartData = Object.entries(scoreDistribution).map(([range, count]) => ({
+      range,
+      count,
+      percentage: completedSubmissions.length > 0 ? Math.round(count / completedSubmissions.length * 100) : 0
+    }));
+    
     const uniqueStudents = new Set(assignmentSubmissions.map(s => s.student_id)).size;
     return {
       totalSubmissions: assignmentSubmissions.length,
       completedSubmissions: completedSubmissions.length,
       completionRate: totalStudents > 0 ? Math.round(uniqueStudents / totalStudents * 100) : 0,
       averageScore,
-      gradeDistribution
+      scoreDistribution: chartData
     };
   };
   const handleLogout = async () => {
@@ -1098,23 +1127,44 @@ const Admin = () => {
                                   </div>
                                 </div>
 
-                                <div>
-                                  <p className="text-sm font-medium mb-2">성적 분포</p>
-                                  <div className="space-y-2">
-                                    {Object.entries(stats.gradeDistribution).map(([grade, count]) => <div key={grade} className="flex items-center gap-2">
-                                        <span className="text-sm font-medium w-8">{grade}:</span>
-                                        <div className="flex-1 bg-muted rounded-full h-6 overflow-hidden">
-                                          <div className={cn("h-full flex items-center justify-end px-2 text-xs font-medium text-white", grade === "A" && "bg-green-500", grade === "B" && "bg-blue-500", grade === "C" && "bg-yellow-500", grade === "D" && "bg-orange-500", grade === "F" && "bg-red-500")} style={{
-                                  width: stats.completedSubmissions > 0 ? `${count / stats.completedSubmissions * 100}%` : "0%"
-                                }}>
-                                            {count > 0 && count}
-                                          </div>
-                                        </div>
-                                        <span className="text-sm text-muted-foreground w-12">
-                                          {stats.completedSubmissions > 0 ? `${Math.round(count / stats.completedSubmissions * 100)}%` : "0%"}
-                                        </span>
-                                      </div>)}
-                                  </div>
+                                <div className="space-y-4">
+                                  <h4 className="text-sm font-medium">점수 분포</h4>
+                                  <ChartContainer
+                                    config={{
+                                      count: {
+                                        label: "학생 수",
+                                        color: "hsl(var(--chart-1))",
+                                      },
+                                    }}
+                                    className="h-[300px] w-full"
+                                  >
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <BarChart data={stats.scoreDistribution}>
+                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                        <XAxis 
+                                          dataKey="range" 
+                                          className="text-xs"
+                                          label={{ value: '점수 구간', position: 'insideBottom', offset: -5 }}
+                                        />
+                                        <YAxis 
+                                          className="text-xs"
+                                          label={{ value: '학생 수', angle: -90, position: 'insideLeft' }}
+                                        />
+                                        <ChartTooltip
+                                          content={<ChartTooltipContent />}
+                                          formatter={(value: number) => {
+                                            const item = stats.scoreDistribution.find(d => d.count === value);
+                                            return [`${value}명 (${item?.percentage || 0}%)`, "학생 수"];
+                                          }}
+                                        />
+                                        <Bar 
+                                          dataKey="count" 
+                                          fill="hsl(var(--chart-1))"
+                                          radius={[4, 4, 0, 0]}
+                                        />
+                                      </BarChart>
+                                    </ResponsiveContainer>
+                                  </ChartContainer>
                                 </div>
                               </CardContent>
                             </Card>;
