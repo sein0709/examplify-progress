@@ -32,7 +32,7 @@ const Index = () => {
         <div className="mx-auto max-w-6xl flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <BookOpen className="h-8 w-8 text-primary" />
+              <BookOpen className="h-8 w-8" style={{ color: '#474747' }} />
               <h1 className="text-3xl font-bold text-foreground">Homework Hub</h1>
             </div>
             <p className="mt-2 text-muted-foreground">
