@@ -78,7 +78,7 @@ const Index = () => {
           {(!user || (user && profile?.verified && hasRole("student"))) && (
             <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
               <div className="p-8">
-                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl" style={{ backgroundColor: '#F7EFE6' }}>
                   <UserCircle className="h-10 w-10" style={{ color: '#474747' }} />
                 </div>
                 <h3 className="mb-3 text-2xl font-bold text-foreground">Student Portal</h3>
@@ -100,7 +100,7 @@ const Index = () => {
           {(!user || (user && profile?.verified && hasRole("instructor"))) && (
             <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
               <div className="p-8">
-                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/20">
+                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl" style={{ backgroundColor: '#F7EFE6' }}>
                   <FileText className="h-10 w-10" style={{ color: '#474747' }} />
                 </div>
                 <h3 className="mb-3 text-2xl font-bold text-foreground">Instructor Portal</h3>
@@ -122,7 +122,7 @@ const Index = () => {
           {(!user || (user && hasRole("admin"))) && (
             <Card className="group cursor-pointer overflow-hidden transition-all hover:shadow-xl">
               <div className="p-8">
-                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/30">
+                <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl" style={{ backgroundColor: '#F7EFE6' }}>
                   <Shield className="h-10 w-10" style={{ color: '#474747' }} />
                 </div>
                 <h3 className="mb-3 text-2xl font-bold text-foreground">Admin Portal</h3>
@@ -147,7 +147,7 @@ const Index = () => {
           <div className="grid gap-6 md:grid-cols-3">
             <Card className="p-6 text-center">
               <div className="mb-4 flex justify-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: '#F7EFE6' }}>
                   <BookOpen className="h-6 w-6" style={{ color: '#474747' }} />
                 </div>
               </div>
@@ -171,7 +171,7 @@ const Index = () => {
 
             <Card className="p-6 text-center">
               <div className="mb-4 flex justify-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ backgroundColor: '#F7EFE6' }}>
                   <UserCircle className="h-6 w-6" style={{ color: '#474747' }} />
                 </div>
               </div>
