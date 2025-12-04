@@ -1062,7 +1062,7 @@ const Admin = () => {
                       </p> : <div className="space-y-6">
                         {assignments.map(assignment => {
                     const stats = getAssignmentStats(assignment.id);
-                    return <Card key={assignment.id}>
+                    return <Card key={assignment.id} className="mt-2.5">
                               <CardHeader>
                                 <CardTitle className="text-lg">{assignment.title}</CardTitle>
                                 <CardDescription>
