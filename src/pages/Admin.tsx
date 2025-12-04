@@ -738,11 +738,10 @@ const Admin = () => {
 
             <TabsContent value="create">
               <div className="space-y-6">
-                {/* Top Row - Assignment Details and Bulk Question Input */}
-                <div className="grid md:grid-cols-2 gap-6 items-start">
-                  {/* Left Column - Assignment Details + Student Selector */}
-                  <div className="space-y-6">
-                    <Card className="h-fit">
+                {/* Top Row - Assignment Details, Bulk Question Input, Student Selector */}
+                <div className="grid md:grid-cols-3 gap-6 items-start">
+                  {/* Column 1 - Assignment Details */}
+                  <Card className="h-fit">
                     <CardHeader variant="accent">
                       <CardTitle>과제 생성</CardTitle>
                       <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
@@ -885,14 +884,7 @@ const Admin = () => {
                     </CardContent>
                   </Card>
 
-                    {/* Student Selector */}
-                    <StudentSelector
-                      selectedStudentIds={selectedStudentIds}
-                      onSelectionChange={setSelectedStudentIds}
-                    />
-                  </div>
-
-                  {/* Right - Bulk Question Input */}
+                  {/* Column 2 - Bulk Question Input */}
                   <div className="h-fit">
                     <BulkQuestionInput 
                       onAddQuestions={(newQuestions) => {
@@ -906,6 +898,12 @@ const Admin = () => {
                       }}
                     />
                   </div>
+
+                  {/* Column 3 - Student Selector */}
+                  <StudentSelector
+                    selectedStudentIds={selectedStudentIds}
+                    onSelectionChange={setSelectedStudentIds}
+                  />
                 </div>
 
                 {/* Bottom - Questions */}
