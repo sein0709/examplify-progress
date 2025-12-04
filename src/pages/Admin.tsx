@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { BulkQuestionInput } from "@/components/BulkQuestionInput";
+import { StudentSelector } from "@/components/StudentSelector";
 interface UserProfile {
   id: string;
   full_name: string;
@@ -99,6 +100,7 @@ const Admin = () => {
   const [submitting, setSubmitting] = useState(false);
   const [isResubmittable, setIsResubmittable] = useState(false);
   const [maxAttempts, setMaxAttempts] = useState<number>(1);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const fetchUsers = async () => {
     try {
       const {
@@ -451,6 +453,17 @@ const Admin = () => {
         error: questionsError
       } = await supabase.from("questions").insert(questionsToInsert);
       if (questionsError) throw questionsError;
+
+      // Insert student assignments if any students selected
+      if (selectedStudentIds.length > 0) {
+        const studentAssignments = selectedStudentIds.map(studentId => ({
+          assignment_id: assignment.id,
+          student_id: studentId,
+        }));
+        const { error: saError } = await supabase.from("student_assignments").insert(studentAssignments);
+        if (saError) throw saError;
+      }
+
       toast.success("과제 생성 완료!");
       setSelectedInstructor("");
       setAssignmentTitle("");
@@ -459,6 +472,7 @@ const Admin = () => {
       setIsResubmittable(false);
       setMaxAttempts(1);
       setUploadedFile(null);
+      setSelectedStudentIds([]);
       setQuestions([{
         text: "",
         options: ["", "", "", "", ""],
@@ -726,8 +740,9 @@ const Admin = () => {
               <div className="space-y-6">
                 {/* Top Row - Assignment Details and Bulk Question Input */}
                 <div className="grid md:grid-cols-2 gap-6 items-start">
-                  {/* Left - Assignment Details */}
-                  <Card className="h-fit">
+                  {/* Left Column - Assignment Details + Student Selector */}
+                  <div className="space-y-6">
+                    <Card className="h-fit">
                     <CardHeader variant="accent">
                       <CardTitle>과제 생성</CardTitle>
                       <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
@@ -869,6 +884,13 @@ const Admin = () => {
                       </Button>
                     </CardContent>
                   </Card>
+
+                    {/* Student Selector */}
+                    <StudentSelector
+                      selectedStudentIds={selectedStudentIds}
+                      onSelectionChange={setSelectedStudentIds}
+                    />
+                  </div>
 
                   {/* Right - Bulk Question Input */}
                   <div className="h-fit">
