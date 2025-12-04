@@ -80,7 +80,6 @@ const Admin = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
 
   // Create Assignment States
   const [instructorsList, setInstructorsList] = useState<Instructor[]>([]);
@@ -723,243 +722,275 @@ const Admin = () => {
             </TabsContent>
 
             <TabsContent value="create">
-              <Card>
-                <CardHeader>
-                  <CardTitle>과제 생성</CardTitle>
-                  <CardDescription>강사를 위한 새 과제 생성</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label>강사 선택</Label>
-                    <Select value={selectedInstructor} onValueChange={setSelectedInstructor}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="강사를 선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {instructorsList.map(instructor => <SelectItem key={instructor.id} value={instructor.id}>
-                            {instructor.full_name}
-                          </SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="title">과제 제목</Label>
-                    <Input id="title" placeholder="과제 제목을 입력하세요" value={assignmentTitle} onChange={e => setAssignmentTitle(e.target.value)} />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">설명 (선택)</Label>
-                    <Input id="description" placeholder="과제 설명을 입력하세요" value={description} onChange={e => setDescription(e.target.value)} />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>마감일 (선택)</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dueDate ? format(dueDate, "PPP") : "날짜 선택"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus className="pointer-events-auto" />
-                      </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="file">파일 업로드 (선택)</Label>
-                  <div className="flex gap-2 items-center">
-                    <Input id="file" type="file" accept="image/*,.pdf" onChange={async e => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setUploadedFile(file);
-                    }
-                  }} disabled={uploading} />
-                    {uploadedFile && <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {uploadedFile.type.startsWith('image/') ? <Image className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-                        <span>{uploadedFile.name}</span>
-                      </div>}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    이 과제에 첨부할 이미지나 PDF 파일을 업로드하세요
-                  </p>
-                </div>
-
-                <div className="space-y-4 border-t pt-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="resubmittable"
-                      checked={isResubmittable}
-                      onCheckedChange={(checked) => setIsResubmittable(checked as boolean)}
-                    />
-                    <Label htmlFor="resubmittable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      학생이 이 과제를 다시 제출할 수 있도록 허용
-                    </Label>
-                  </div>
-                  
-                  {isResubmittable && (
-                    <div className="space-y-2 pl-6">
-                      <Label htmlFor="maxAttempts">최대 제출 횟수</Label>
-                      <Input
-                        id="maxAttempts"
-                        type="number"
-                        min="1"
-                        value={maxAttempts}
-                        onChange={(e) => setMaxAttempts(Math.max(1, parseInt(e.target.value) || 1))}
-                        placeholder="제출 횟수 입력"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        학생들은 이 과제를 최대 {maxAttempts}회까지 제출할 수 있습니다
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                    <Label>문제</Label>
-                    {/* Question Grid - 5 per row */}
-                    <div className="grid grid-cols-5 gap-4">
-                      {questions.map((question, qIndex) => (
-                        <Card 
-                          key={qIndex}
-                          className={cn(
-                            "aspect-square cursor-pointer hover:shadow-md transition-all relative",
-                            expandedQuestion === qIndex && "ring-2 ring-primary shadow-lg"
-                          )}
-                          onClick={() => {
-                            setExpandedQuestion(expandedQuestion === qIndex ? null : qIndex);
-                          }}
-                        >
-                          {questions.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute top-2 right-2 h-8 w-8 hover:bg-destructive/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (expandedQuestion === qIndex) {
-                                  setExpandedQuestion(null);
-                                }
-                                removeQuestion(qIndex);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <CardContent className="p-4 flex flex-col items-center justify-center h-full text-center">
-                            <span className="font-semibold text-xl">문제 {qIndex + 1}</span>
-                            {question.text && (
-                              <span className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                                {question.text}
-                              </span>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
-                      
-                      {/* Add Question button */}
-                      <Card 
-                        className="aspect-square cursor-pointer border-dashed hover:border-solid hover:bg-accent/10 transition-all"
-                        onClick={addQuestion}
-                      >
-                        <CardContent className="p-4 flex flex-col items-center justify-center h-full">
-                          <Plus className="h-8 w-8 text-muted-foreground" />
-                          <span className="text-sm font-medium text-muted-foreground mt-2">문제 추가</span>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Full Question Form - only show expanded question */}
-                    {expandedQuestion !== null && questions[expandedQuestion] && (
-                      <div className="mt-6">
-                        <Card id={`question-form-${expandedQuestion}`} className="border rounded-lg">
-                          <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <CardTitle className="text-lg">문제 {expandedQuestion + 1}</CardTitle>
-                              {questions.length > 1 && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => {
-                                    removeQuestion(expandedQuestion);
-                                    setExpandedQuestion(null);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  문제 삭제
-                                </Button>
-                              )}
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>문제 내용</Label>
-                              <Input 
-                                placeholder="문제 내용을 입력하세요" 
-                                value={questions[expandedQuestion].text} 
-                                onChange={e => updateQuestion(expandedQuestion, "text", e.target.value)} 
-                              />
-                            </div>
-
-                            <div className="space-y-3">
-                              <RadioGroup 
-                                value={questions[expandedQuestion].correctAnswer.toString()} 
-                                onValueChange={value => updateQuestion(expandedQuestion, "correctAnswer", parseInt(value))}
-                              >
-                                {questions[expandedQuestion].options.map((option, oIndex) => (
-                                  <div key={oIndex} className="flex items-center gap-2">
-                                    <RadioGroupItem 
-                                      value={oIndex.toString()} 
-                                      id={`q${expandedQuestion}-o${oIndex}`} 
-                                      className="shrink-0" 
-                                    />
-                                    <div className="flex-1">
-                                      <Input 
-                                        placeholder={`선택지 ${oIndex + 1}`} 
-                                        value={option} 
-                                        onChange={e => updateOption(expandedQuestion, oIndex, e.target.value)} 
-                                      />
-                                    </div>
-                                    {questions[expandedQuestion].correctAnswer === oIndex && (
-                                      <span className="text-xs font-medium shrink-0 text-[#a5d160]">
-                                        ✓ 정답
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </RadioGroup>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor={`explanation-${expandedQuestion}`}>설명 (선택)</Label>
-                              <Textarea 
-                                id={`explanation-${expandedQuestion}`} 
-                                placeholder="이 답이 정답인 이유를 설명하세요..." 
-                                value={questions[expandedQuestion].explanation} 
-                                onChange={e => updateQuestion(expandedQuestion, "explanation", e.target.value)} 
-                                rows={3} 
-                              />
-                            </div>
-                          </CardContent>
-                        </Card>
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left Column - Assignment Details */}
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>과제 정보</CardTitle>
+                      <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="space-y-2">
+                        <Label>강사 선택</Label>
+                        <Select value={selectedInstructor} onValueChange={setSelectedInstructor}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="강사를 선택하세요" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {instructorsList.map(instructor => (
+                              <SelectItem key={instructor.id} value={instructor.id}>
+                                {instructor.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
-                  </div>
 
-                  <Button 
-                    onClick={handleCreateAssignment} 
-                    className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 font-semibold text-lg py-6" 
-                    disabled={submitting}
-                  >
-                    {submitting ? <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        생성 중...
-                      </> : "과제 생성"}
-                  </Button>
-                </CardContent>
-              </Card>
+                      <div className="space-y-2">
+                        <Label htmlFor="title">과제 제목</Label>
+                        <Input
+                          id="title"
+                          placeholder="과제 제목을 입력하세요"
+                          value={assignmentTitle}
+                          onChange={(e) => setAssignmentTitle(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="description">설명 (선택사항)</Label>
+                        <Input
+                          id="description"
+                          placeholder="과제 설명을 입력하세요"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>마감일 (선택사항)</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !dueDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dueDate ? format(dueDate, "PPP") : "날짜 선택"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={dueDate}
+                              onSelect={setDueDate}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="file">파일 업로드 (선택사항)</Label>
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            id="file"
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setUploadedFile(file);
+                              }
+                            }}
+                            disabled={uploading}
+                          />
+                          {uploadedFile && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              {uploadedFile.type.startsWith('image/') ? (
+                                <Image className="h-4 w-4" />
+                              ) : (
+                                <FileText className="h-4 w-4" />
+                              )}
+                              <span>{uploadedFile.name}</span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          이 과제에 첨부할 이미지 또는 PDF 파일을 업로드하세요
+                        </p>
+                      </div>
+
+                      <div className="space-y-4 border-t pt-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="resubmittable"
+                            checked={isResubmittable}
+                            onCheckedChange={(checked) => setIsResubmittable(checked as boolean)}
+                          />
+                          <Label htmlFor="resubmittable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            학생들이 이 과제를 재제출할 수 있도록 허용
+                          </Label>
+                        </div>
+                        
+                        {isResubmittable && (
+                          <div className="space-y-2 pl-6">
+                            <Label htmlFor="maxAttempts">최대 시도 횟수</Label>
+                            <Input
+                              id="maxAttempts"
+                              type="number"
+                              min="1"
+                              value={maxAttempts}
+                              onChange={(e) => setMaxAttempts(Math.max(1, parseInt(e.target.value) || 1))}
+                              placeholder="시도 횟수를 입력하세요"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              학생들은 이 과제를 최대 {maxAttempts}회까지 제출할 수 있습니다
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      <Button onClick={handleCreateAssignment} className="w-full" disabled={submitting}>
+                        {submitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            생성 중...
+                          </>
+                        ) : (
+                          "과제 생성"
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Right Column - Questions */}
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>문제</CardTitle>
+                      <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid grid-cols-3 gap-4">
+                        {questions.map((question, qIndex) => (
+                          <Card 
+                            key={qIndex} 
+                            className="aspect-square flex flex-col border-2 hover:border-accent transition-colors cursor-pointer"
+                            onClick={() => {
+                              const element = document.getElementById(`admin-question-form-${qIndex}`);
+                              element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }}
+                          >
+                            <CardHeader className="flex-1 flex items-center justify-center p-4">
+                              <CardTitle className="text-center text-sm">
+                                문제 {qIndex + 1}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0">
+                              {question.text && (
+                                <p className="text-xs text-muted-foreground text-center line-clamp-2">
+                                  {question.text}
+                                </p>
+                              )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      <div className="space-y-6">
+                        {questions.map((question, qIndex) => (
+                          <Card key={qIndex} id={`admin-question-form-${qIndex}`} className="border-2">
+                            <CardHeader>
+                              <div className="flex items-center justify-between">
+                                <CardTitle>문제 {qIndex + 1}</CardTitle>
+                                {questions.length > 1 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeQuestion(qIndex)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    삭제
+                                  </Button>
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="space-y-2">
+                                <Label>문제 텍스트</Label>
+                                <Input
+                                  placeholder="문제 텍스트를 입력하세요"
+                                  value={question.text}
+                                  onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
+                                />
+                              </div>
+
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                                  <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                    라디오 버튼을 클릭하여 정답을 표시하세요
+                                  </Label>
+                                </div>
+                                <RadioGroup
+                                  value={question.correctAnswer.toString()}
+                                  onValueChange={(value) =>
+                                    updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                                  }
+                                >
+                                  {question.options.map((option, oIndex) => (
+                                    <div key={oIndex} className="flex items-center gap-2">
+                                      <RadioGroupItem
+                                        value={oIndex.toString()}
+                                        id={`admin-q${qIndex}-o${oIndex}`}
+                                        className="shrink-0"
+                                      />
+                                      <div className="flex-1">
+                                        <Input
+                                          placeholder={`선택지 ${oIndex + 1}`}
+                                          value={option}
+                                          onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                                        />
+                                      </div>
+                                      {question.correctAnswer === oIndex && (
+                                        <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
+                                          ✓ 정답
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </RadioGroup>
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor={`admin-explanation-${qIndex}`}>설명 (선택사항)</Label>
+                                <Textarea
+                                  id={`admin-explanation-${qIndex}`}
+                                  placeholder="이 정답이 맞는 이유를 설명하세요..."
+                                  value={question.explanation}
+                                  onChange={(e) => updateQuestion(qIndex, "explanation", e.target.value)}
+                                  rows={3}
+                                />
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+
+                      <Button onClick={addQuestion} variant="outline" className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        문제 추가
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="assignments">
