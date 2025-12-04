@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -6,7 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Users, Search } from "lucide-react";
 
 interface Student {
   id: string;
@@ -22,6 +23,7 @@ interface StudentSelectorProps {
 export function StudentSelector({ selectedStudentIds, onSelectionChange }: StudentSelectorProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchStudents();
@@ -31,7 +33,6 @@ export function StudentSelector({ selectedStudentIds, onSelectionChange }: Stude
     try {
       setLoading(true);
       
-      // Get all student role user IDs
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id")
@@ -46,7 +47,6 @@ export function StudentSelector({ selectedStudentIds, onSelectionChange }: Stude
         return;
       }
 
-      // Get verified profiles for those students
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, full_name, email")
@@ -64,6 +64,16 @@ export function StudentSelector({ selectedStudentIds, onSelectionChange }: Stude
     }
   };
 
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery.trim()) return students;
+    
+    const query = searchQuery.toLowerCase().trim();
+    return students.filter(student => 
+      (student.full_name?.toLowerCase().includes(query)) ||
+      (student.email?.toLowerCase().includes(query))
+    );
+  }, [students, searchQuery]);
+
   const toggleStudent = (studentId: string) => {
     if (selectedStudentIds.includes(studentId)) {
       onSelectionChange(selectedStudentIds.filter(id => id !== studentId));
@@ -73,12 +83,18 @@ export function StudentSelector({ selectedStudentIds, onSelectionChange }: Stude
   };
 
   const selectAll = () => {
-    onSelectionChange(students.map(s => s.id));
+    const filteredIds = filteredStudents.map(s => s.id);
+    const newSelection = [...new Set([...selectedStudentIds, ...filteredIds])];
+    onSelectionChange(newSelection);
   };
 
   const deselectAll = () => {
-    onSelectionChange([]);
+    const filteredIds = new Set(filteredStudents.map(s => s.id));
+    onSelectionChange(selectedStudentIds.filter(id => !filteredIds.has(id)));
   };
+
+  const allFilteredSelected = filteredStudents.length > 0 && 
+    filteredStudents.every(s => selectedStudentIds.includes(s.id));
 
   return (
     <Card className="h-fit">
@@ -107,24 +123,34 @@ export function StudentSelector({ selectedStudentIds, onSelectionChange }: Stude
           </div>
         ) : (
           <>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="이름 또는 이메일로 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
             <div className="flex gap-2">
               <Button 
                 type="button" 
                 variant="outline" 
                 size="sm" 
                 onClick={selectAll}
-                disabled={selectedStudentIds.length === students.length}
+                disabled={allFilteredSelected}
               >
-                전체 선택
+                {searchQuery ? "검색 결과 선택" : "전체 선택"}
               </Button>
               <Button 
                 type="button" 
                 variant="outline" 
                 size="sm" 
                 onClick={deselectAll}
-                disabled={selectedStudentIds.length === 0}
+                disabled={!filteredStudents.some(s => selectedStudentIds.includes(s.id))}
               >
-                전체 해제
+                {searchQuery ? "검색 결과 해제" : "전체 해제"}
               </Button>
             </div>
 
@@ -138,26 +164,34 @@ export function StudentSelector({ selectedStudentIds, onSelectionChange }: Stude
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {students.map((student) => (
-                    <TableRow 
-                      key={student.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => toggleStudent(student.id)}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedStudentIds.includes(student.id)}
-                          onCheckedChange={() => toggleStudent(student.id)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {student.full_name || "이름 없음"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {student.email || "-"}
+                  {filteredStudents.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        검색 결과가 없습니다
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredStudents.map((student) => (
+                      <TableRow 
+                        key={student.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => toggleStudent(student.id)}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedStudentIds.includes(student.id)}
+                            onCheckedChange={() => toggleStudent(student.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {student.full_name || "이름 없음"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {student.email || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </ScrollArea>
