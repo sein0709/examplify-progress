@@ -1096,7 +1096,7 @@ const Admin = () => {
                             }
                           }} className="h-[300px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                      <BarChart data={stats.scoreDistribution}>
+                                      <BarChart data={stats.scoreDistribution} className="h-80 max-h-80">
                                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                                         <XAxis dataKey="range" className="text-xs" label={{
                                   value: '점수 구간',
