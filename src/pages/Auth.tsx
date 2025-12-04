@@ -64,8 +64,8 @@ const Auth = () => {
           // Role assignment is critical - if it fails, inform the user
           console.error("Error assigning role:", roleError);
           toast({
-            title: "Account Created with Warning",
-            description: "Your account was created but role assignment failed. Please contact an administrator.",
+            title: "경고: 계정 생성됨",
+            description: "계정이 생성되었으나 역할 할당에 실패했습니다. 관리자에게 문의하세요.",
             variant: "destructive",
           });
           navigate("/pending-approval");
@@ -73,21 +73,21 @@ const Auth = () => {
         }
 
         toast({
-          title: "Account created!",
-          description: "Please wait for admin approval to access the system.",
+          title: "계정이 생성되었습니다!",
+          description: "시스템 접근을 위해 관리자 승인을 기다려주세요.",
         });
         navigate("/pending-approval");
       }
     } catch (error) {
       if (error instanceof ZodError) {
         toast({
-          title: "Validation Error",
+          title: "유효성 검사 오류",
           description: error.errors[0].message,
           variant: "destructive",
         });
       } else if (error instanceof Error) {
         toast({
-          title: "Error",
+          title: "오류",
           description: error.message,
           variant: "destructive",
         });
@@ -114,20 +114,20 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: "Welcome back!",
-        description: "You have been signed in successfully.",
+        title: "환영합니다!",
+        description: "성공적으로 로그인되었습니다.",
       });
       navigate("/");
     } catch (error) {
       if (error instanceof ZodError) {
         toast({
-          title: "Validation Error",
+          title: "유효성 검사 오류",
           description: error.errors[0].message,
           variant: "destructive",
         });
       } else if (error instanceof Error) {
         toast({
-          title: "Error",
+          title: "오류",
           description: error.message,
           variant: "destructive",
         });
@@ -141,19 +141,19 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8">
         <div className="mb-6 flex items-center justify-center gap-3">
-          <h1 className="text-2xl font-bold text-foreground">Homework Hub</h1>
+          <h1 className="text-2xl font-bold text-foreground">과제 관리 시스템</h1>
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsTrigger value="signin">로그인</TabsTrigger>
+            <TabsTrigger value="signup">회원가입</TabsTrigger>
           </TabsList>
 
           <TabsContent value="signin">
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signin-email">Email</Label>
+                <Label htmlFor="signin-email">이메일</Label>
                 <Input
                   id="signin-email"
                   type="email"
@@ -166,7 +166,7 @@ const Auth = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signin-password">Password</Label>
+                <Label htmlFor="signin-password">비밀번호</Label>
                 <Input
                   id="signin-password"
                   type="password"
@@ -186,10 +186,10 @@ const Auth = () => {
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Signing in...
+                    로그인 중...
                   </span>
                 ) : (
-                  "Sign In"
+                  "로그인"
                 )}
               </Button>
             </form>
@@ -198,11 +198,11 @@ const Auth = () => {
           <TabsContent value="signup">
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="signup-name">Full Name</Label>
+                <Label htmlFor="signup-name">이름</Label>
                 <Input
                   id="signup-name"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="홍길동"
                   value={signUpData.fullName}
                   onChange={(e) =>
                     setSignUpData({ ...signUpData, fullName: e.target.value })
@@ -211,7 +211,7 @@ const Auth = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
+                <Label htmlFor="signup-email">이메일</Label>
                 <Input
                   id="signup-email"
                   type="email"
@@ -224,7 +224,7 @@ const Auth = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
+                <Label htmlFor="signup-password">비밀번호</Label>
                 <Input
                   id="signup-password"
                   type="password"
@@ -237,7 +237,7 @@ const Auth = () => {
                 />
               </div>
               <div className="space-y-3">
-                <Label className="text-base font-semibold">I am a...</Label>
+                <Label className="text-base font-semibold">역할 선택</Label>
                 <RadioGroup
                   value={signUpData.role}
                   onValueChange={(value: "instructor" | "student") =>
@@ -256,7 +256,7 @@ const Auth = () => {
                   >
                     <RadioGroupItem value="student" id="student" />
                     <Label htmlFor="student" className="flex-1 font-medium cursor-pointer text-base">
-                      Student
+                      학생
                     </Label>
                   </div>
                   <div 
@@ -270,7 +270,7 @@ const Auth = () => {
                   >
                     <RadioGroupItem value="instructor" id="instructor" />
                     <Label htmlFor="instructor" className="flex-1 font-medium cursor-pointer text-base">
-                      Instructor
+                      강사
                     </Label>
                   </div>
                 </RadioGroup>
@@ -280,14 +280,14 @@ const Auth = () => {
                 className="w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all" 
                 disabled={loading}
               >
-                {loading ? "Creating account..." : "Create Account"}
+                {loading ? "계정 생성 중..." : "계정 생성"}
               </Button>
             </form>
           </TabsContent>
         </Tabs>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          Note: Your account will need to be verified by an administrator before you can access the system.
+          참고: 시스템 접근 전 관리자의 계정 승인이 필요합니다.
         </p>
       </Card>
     </div>

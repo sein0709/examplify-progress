@@ -62,7 +62,7 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
 
       setAssignedStudentIds(new Set((assignedData || []).map(a => a.student_id)));
     } catch (error: any) {
-      toast.error("Failed to fetch students: " + error.message);
+      toast.error("학생 목록을 불러오는데 실패했습니다: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -92,7 +92,7 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
           next.delete(studentId);
           return next;
         });
-        toast.success("Student removed from assignment");
+        toast.success("학생이 과제에서 제외되었습니다");
       } else {
         // Add assignment
         const { error } = await supabase
@@ -102,10 +102,10 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
         if (error) throw error;
 
         setAssignedStudentIds(prev => new Set([...prev, studentId]));
-        toast.success("Student assigned");
+        toast.success("학생이 과제에 할당되었습니다");
       }
     } catch (error: any) {
-      toast.error("Failed to update assignment: " + error.message);
+      toast.error("과제 할당 업데이트 실패: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -127,9 +127,9 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
       if (error) throw error;
 
       setAssignedStudentIds(new Set(students.map(s => s.id)));
-      toast.success(`Assigned ${unassignedStudents.length} students`);
+      toast.success(`${unassignedStudents.length}명의 학생이 할당되었습니다`);
     } catch (error: any) {
-      toast.error("Failed to assign students: " + error.message);
+      toast.error("학생 할당 실패: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -146,9 +146,9 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
       if (error) throw error;
 
       setAssignedStudentIds(new Set());
-      toast.success("All students removed from assignment");
+      toast.success("모든 학생이 과제에서 제외되었습니다");
     } catch (error: any) {
-      toast.error("Failed to remove students: " + error.message);
+      toast.error("학생 제외 실패: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -159,14 +159,14 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Users className="h-4 w-4 mr-2" />
-          Assign Students
+          학생 할당
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Manage Student Assignments</DialogTitle>
+          <DialogTitle>학생 과제 할당 관리</DialogTitle>
           <DialogDescription>
-            Select which students should have access to "{assignmentTitle}"
+            "{assignmentTitle}" 과제에 접근할 수 있는 학생을 선택하세요
           </DialogDescription>
         </DialogHeader>
 
@@ -178,7 +178,7 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
           <div className="flex-1 overflow-hidden flex flex-col gap-4">
             <div className="flex gap-2 items-center justify-between">
               <Badge variant="secondary">
-                {assignedStudentIds.size} of {students.length} assigned
+                {students.length}명 중 {assignedStudentIds.size}명 할당됨
               </Badge>
               <div className="flex gap-2">
                 <Button
@@ -188,7 +188,7 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
                   disabled={saving || assignedStudentIds.size === students.length}
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Assign All
+                  전체 할당
                 </Button>
                 <Button
                   size="sm"
@@ -197,7 +197,7 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
                   disabled={saving || assignedStudentIds.size === 0}
                 >
                   <UserMinus className="h-4 w-4 mr-2" />
-                  Remove All
+                  전체 제외
                 </Button>
               </div>
             </div>
@@ -205,15 +205,15 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
             <div className="flex-1 overflow-auto border rounded-lg">
               {students.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
-                  No verified students found
+                  승인된 학생이 없습니다
                 </p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12">Assigned</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead className="w-12">할당</TableHead>
+                      <TableHead>이름</TableHead>
+                      <TableHead>이메일</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -226,9 +226,9 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
                             disabled={saving}
                           />
                         </TableCell>
-                        <TableCell>{student.full_name || "Unknown"}</TableCell>
+                        <TableCell>{student.full_name || "알 수 없음"}</TableCell>
                         <TableCell className="text-muted-foreground">
-                          {student.email || "No email"}
+                          {student.email || "이메일 없음"}
                         </TableCell>
                       </TableRow>
                     ))}
