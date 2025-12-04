@@ -893,30 +893,49 @@ const Admin = () => {
                       <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="grid grid-cols-3 gap-4">
-                        {questions.map((question, qIndex) => (
-                          <Card 
-                            key={qIndex} 
-                            className="aspect-square flex flex-col border-2 hover:border-accent transition-colors cursor-pointer"
-                            onClick={() => {
-                              const element = document.getElementById(`admin-question-form-${qIndex}`);
-                              element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }}
-                          >
-                            <CardHeader className="flex-1 flex items-center justify-center p-4">
-                              <CardTitle className="text-center text-sm">
-                                문제 {qIndex + 1}
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-4 pt-0">
-                              {question.text && (
-                                <p className="text-xs text-muted-foreground text-center line-clamp-2">
-                                  {question.text}
-                                </p>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                        {questions.map((question, qIndex) => {
+                          const hasContent = question.text || question.options.some(o => o);
+                          return (
+                            <div
+                              key={qIndex}
+                              onClick={() => {
+                                const element = document.getElementById(`admin-question-form-${qIndex}`);
+                                element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }}
+                              className={cn(
+                                "group relative aspect-square rounded-xl cursor-pointer",
+                                "border-2 transition-all duration-300 ease-out",
+                                "hover:scale-105 hover:shadow-lg hover:-translate-y-1",
+                                hasContent 
+                                  ? "bg-gradient-to-br from-accent/20 to-accent/5 border-accent/40 hover:border-accent hover:shadow-accent/20" 
+                                  : "bg-gradient-to-br from-muted/50 to-muted/20 border-border hover:border-accent/60"
                               )}
-                            </CardContent>
-                          </Card>
-                        ))}
+                            >
+                              <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
+                                <div className={cn(
+                                  "w-10 h-10 rounded-full flex items-center justify-center mb-2",
+                                  "text-lg font-bold transition-colors duration-300",
+                                  hasContent 
+                                    ? "bg-accent/30 text-accent-foreground group-hover:bg-accent/50" 
+                                    : "bg-muted text-muted-foreground group-hover:bg-accent/20"
+                                )}>
+                                  {qIndex + 1}
+                                </div>
+                                {question.text ? (
+                                  <p className="text-xs text-center text-muted-foreground line-clamp-2 px-1">
+                                    {question.text}
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground/60 italic">빈 문제</p>
+                                )}
+                              </div>
+                              {hasContent && (
+                                <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
 
                       <div className="space-y-6">
