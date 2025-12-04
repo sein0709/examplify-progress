@@ -547,10 +547,15 @@ const Admin = () => {
             </Button>
             <h1 className="text-3xl font-bold">관리자 대시보드</h1>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            로그아웃
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate("/instructor")}>
+              강사 포털
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              로그아웃
+            </Button>
+          </div>
         </div>
 
         {loading ? <div className="flex justify-center py-12">

@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 interface ProtectedRouteProps {
   children: ReactNode;
   requireVerified?: boolean;
-  requiredRole?: "admin" | "instructor" | "student";
+  requiredRole?: ("admin" | "instructor" | "student") | ("admin" | "instructor" | "student")[];
 }
 
 export const ProtectedRoute = ({
@@ -33,9 +33,13 @@ export const ProtectedRoute = ({
     }
 
     // If specific role is required and user doesn't have it, redirect to home
-    if (requiredRole && !hasRole(requiredRole)) {
-      navigate("/");
-      return;
+    if (requiredRole) {
+      const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+      const hasRequiredRole = roles.some((role) => hasRole(role));
+      if (!hasRequiredRole) {
+        navigate("/");
+        return;
+      }
     }
   }, [user, profile, loading, requireVerified, requiredRole, hasRole, navigate]);
 
@@ -48,7 +52,13 @@ export const ProtectedRoute = ({
   }
 
   // Show loading while checking conditions
-  if (!user || (requireVerified && !profile?.verified) || (requiredRole && !hasRole(requiredRole))) {
+  const checkRoleAccess = () => {
+    if (!requiredRole) return true;
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    return roles.some((role) => hasRole(role));
+  };
+
+  if (!user || (requireVerified && !profile?.verified) || (requiredRole && !checkRoleAccess())) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

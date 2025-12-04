@@ -38,7 +38,7 @@ const App = () => (
             <Route
               path="/instructor"
               element={
-                <ProtectedRoute requireVerified requiredRole="instructor">
+                <ProtectedRoute requireVerified requiredRole={["instructor", "admin"]}>
                   <Instructor />
                 </ProtectedRoute>
               }
