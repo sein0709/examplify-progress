@@ -77,7 +77,7 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
   };
 
   return (
-    <Card className="border-2 border-dashed border-accent">
+    <Card className="h-full flex flex-col border-2 border-dashed border-accent">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Plus className="h-5 w-5" />
@@ -87,7 +87,7 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
           간단한 텍스트 형식을 사용하여 여러 문제를 한 번에 빠르게 추가하세요
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 flex-1 flex flex-col">
         <Alert className="bg-muted/50">
           <Info className="h-4 w-4" />
           <AlertDescription className="text-sm">
@@ -97,7 +97,7 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
           </AlertDescription>
         </Alert>
 
-        <div className="space-y-2">
+        <div className="space-y-2 flex-1 flex flex-col">
           <Label>문제 붙여넣기</Label>
           <Textarea
             placeholder={`프랑스의 수도는 무엇인가요?
@@ -110,8 +110,7 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
 4`}
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
-            rows={10}
-            className="font-mono text-sm"
+            className="font-mono text-sm flex-1 min-h-[200px]"
           />
         </div>
 

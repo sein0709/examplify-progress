@@ -74,7 +74,7 @@ export function StudentSelector({
     onSelectionChange(selectedStudentIds.filter(id => !filteredIds.has(id)));
   };
   const allFilteredSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.includes(s.id));
-  return <Card className="h-fit">
+  return <Card className="h-full flex flex-col">
       <CardHeader variant="accent">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
@@ -89,7 +89,7 @@ export function StudentSelector({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 mt-2.5">
+      <CardContent className="space-y-4 mt-2.5 flex-1 flex flex-col">
         {loading ? <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div> : students.length === 0 ? <div className="text-center py-8 text-muted-foreground">
@@ -109,7 +109,7 @@ export function StudentSelector({
               </Button>
             </div>
 
-            <ScrollArea className="h-[200px] border rounded-md">
+            <ScrollArea className="flex-1 min-h-[200px] border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
