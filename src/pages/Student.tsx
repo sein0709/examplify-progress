@@ -349,17 +349,17 @@ const Student = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
             {/* Left: Preview */}
             {currentAssignment.file_url && (
-              <Card className="shadow-lg border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
+              <Card className="h-full flex flex-col shadow-lg border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Paperclip className="h-5 w-5" color="#474747" />
                     Assignment Reference Material
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1">
                   {currentAssignment.file_type?.startsWith('image/') ? (
                     <div className="space-y-2">
                       <img 
@@ -382,8 +382,8 @@ const Student = () => {
             )}
 
             {/* Right: Marking Interface */}
-            <div className="space-y-6">
-              <Card className="shadow-xl border-2 hover:shadow-2xl transition-all duration-300 animate-scale-in">
+            <div className="h-full flex flex-col space-y-6">
+              <Card className="flex-1 flex flex-col shadow-xl border-2 hover:shadow-2xl transition-all duration-300 animate-scale-in">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl leading-relaxed">{currentQuestion.text}</CardTitle>
                 </CardHeader>
