@@ -21,6 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { BulkQuestionInput } from "@/components/BulkQuestionInput";
 interface UserProfile {
   id: string;
   full_name: string;
@@ -871,6 +872,18 @@ const Admin = () => {
 
                 {/* Right Column - Questions */}
                 <div className="space-y-6">
+                  <BulkQuestionInput 
+                    onAddQuestions={(newQuestions) => {
+                      setQuestions(prev => {
+                        const hasContent = prev.length > 0 && (prev[0].text || prev[0].options.some(o => o));
+                        if (hasContent) {
+                          return [...prev, ...newQuestions];
+                        }
+                        return newQuestions;
+                      });
+                    }}
+                  />
+
                   <Card>
                     <CardHeader>
                       <CardTitle>문제</CardTitle>
