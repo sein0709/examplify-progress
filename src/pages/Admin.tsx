@@ -725,7 +725,7 @@ const Admin = () => {
             <TabsContent value="create">
               <div className="space-y-6">
                 {/* Top Row - Assignment Details and Bulk Question Input */}
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-2 gap-6 items-start">
                   {/* Left - Assignment Details */}
                   <Card className="h-fit">
                     <CardHeader variant="accent">
