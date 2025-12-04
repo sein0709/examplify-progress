@@ -399,19 +399,26 @@ const Student = () => {
                           <div
                             key={index}
                             className={cn(
-                              "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200",
+                              "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300",
                               "hover:scale-[1.02] hover:shadow-md",
                               isSelected 
-                                ? "bg-accent/50 border-primary shadow-md scale-[1.02]" 
+                                ? "bg-accent/50 border-primary shadow-lg scale-[1.02] animate-scale-in ring-2 ring-primary/20" 
                                 : "border-border hover:border-accent"
                             )}
                           >
-                            <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                            <RadioGroupItem 
+                              value={index.toString()} 
+                              id={`option-${index}`}
+                              className={cn(
+                                "transition-transform duration-200",
+                                isSelected && "scale-110"
+                              )}
+                            />
                             <Label
                               htmlFor={`option-${index}`}
                               className={cn(
-                                "flex-1 cursor-pointer text-base transition-colors",
-                                isSelected && "font-medium text-foreground"
+                                "flex-1 cursor-pointer text-base transition-all duration-200",
+                                isSelected && "font-medium text-foreground translate-x-0.5"
                               )}
                             >
                               {option}
