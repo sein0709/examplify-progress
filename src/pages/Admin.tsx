@@ -893,7 +893,7 @@ const Admin = () => {
                       <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mt-2">
                         {questions.map((question, qIndex) => {
                           const hasContent = question.text || question.options.some(o => o);
                           return (
