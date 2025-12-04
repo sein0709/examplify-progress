@@ -231,6 +231,7 @@ const Instructor = () => {
     }
   };
 
+  const addQuestion = () => {
     setQuestions([...questions, { text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "" }]);
   };
 
