@@ -441,12 +441,13 @@ const Instructor = () => {
           </TabsList>
 
           <TabsContent value="create">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Left Column - Assignment Details */}
-              <div className="space-y-6">
-                <Card>
+            <div className="space-y-6">
+              {/* Top Row - Assignment Details and Bulk Question Input */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left - Assignment Details */}
+                <Card className="h-fit">
                   <CardHeader>
-                    <CardTitle>과제 정보</CardTitle>
+                    <CardTitle>과제 생성</CardTitle>
                     <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -570,150 +571,151 @@ const Instructor = () => {
                     </Button>
                   </CardContent>
                 </Card>
+
+                {/* Right - Bulk Question Input */}
+                <div className="h-fit">
+                  <BulkQuestionInput onAddQuestions={addBulkQuestions} />
+                </div>
               </div>
 
-              {/* Right Column - Questions */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>문제</CardTitle>
-                    <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                      {questions.map((question, qIndex) => {
-                        const hasContent = question.text || question.options.some(o => o);
-                        return (
-                          <div
-                            key={qIndex}
-                            onClick={() => {
-                              const element = document.getElementById(`question-form-${qIndex}`);
-                              element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }}
-                            className={cn(
-                              "group relative aspect-square rounded-xl cursor-pointer",
-                              "border-2 transition-all duration-300 ease-out",
-                              "hover:scale-105 hover:shadow-lg hover:-translate-y-1",
+              {/* Bottom - Questions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>문제</CardTitle>
+                  <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                    {questions.map((question, qIndex) => {
+                      const hasContent = question.text || question.options.some(o => o);
+                      return (
+                        <div
+                          key={qIndex}
+                          onClick={() => {
+                            const element = document.getElementById(`question-form-${qIndex}`);
+                            element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className={cn(
+                            "group relative aspect-square rounded-xl cursor-pointer",
+                            "border-2 transition-all duration-300 ease-out",
+                            "hover:scale-105 hover:shadow-lg hover:-translate-y-1",
+                            hasContent 
+                              ? "bg-gradient-to-br from-accent/20 to-accent/5 border-accent/40 hover:border-accent hover:shadow-accent/20" 
+                              : "bg-gradient-to-br from-muted/50 to-muted/20 border-border hover:border-accent/60"
+                          )}
+                        >
+                          <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
+                            <div className={cn(
+                              "w-10 h-10 rounded-full flex items-center justify-center mb-2",
+                              "text-lg font-bold transition-colors duration-300",
                               hasContent 
-                                ? "bg-gradient-to-br from-accent/20 to-accent/5 border-accent/40 hover:border-accent hover:shadow-accent/20" 
-                                : "bg-gradient-to-br from-muted/50 to-muted/20 border-border hover:border-accent/60"
-                            )}
-                          >
-                            <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
-                              <div className={cn(
-                                "w-10 h-10 rounded-full flex items-center justify-center mb-2",
-                                "text-lg font-bold transition-colors duration-300",
-                                hasContent 
-                                  ? "bg-accent/30 text-accent-foreground group-hover:bg-accent/50" 
-                                  : "bg-muted text-muted-foreground group-hover:bg-accent/20"
-                              )}>
-                                {qIndex + 1}
-                              </div>
-                              {question.text ? (
-                                <p className="text-xs text-center text-muted-foreground line-clamp-2 px-1">
-                                  {question.text}
-                                </p>
-                              ) : (
-                                <p className="text-xs text-muted-foreground/60 italic">빈 문제</p>
-                              )}
+                                ? "bg-accent/30 text-accent-foreground group-hover:bg-accent/50" 
+                                : "bg-muted text-muted-foreground group-hover:bg-accent/20"
+                            )}>
+                              {qIndex + 1}
                             </div>
-                            {hasContent && (
-                              <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            {question.text ? (
+                              <p className="text-xs text-center text-muted-foreground line-clamp-2 px-1">
+                                {question.text}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/60 italic">빈 문제</p>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
+                          {hasContent && (
+                            <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
 
-                    <div className="space-y-6">
-                      {questions.map((question, qIndex) => (
-                        <Card key={qIndex} id={`question-form-${qIndex}`} className="border-2">
-                          <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <CardTitle>문제 {qIndex + 1}</CardTitle>
-                              {questions.length > 1 && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeQuestion(qIndex)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  삭제
-                                </Button>
-                              )}
-                            </div>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>문제 텍스트</Label>
-                              <Input
-                                placeholder="문제 텍스트를 입력하세요"
-                                value={question.text}
-                                onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
-                              />
-                            </div>
-
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                                <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                  라디오 버튼을 클릭하여 정답을 표시하세요
-                                </Label>
-                              </div>
-                              <RadioGroup
-                                value={question.correctAnswer.toString()}
-                                onValueChange={(value) =>
-                                  updateQuestion(qIndex, "correctAnswer", parseInt(value))
-                                }
+                  <div className="space-y-6">
+                    {questions.map((question, qIndex) => (
+                      <Card key={qIndex} id={`question-form-${qIndex}`} className="border-2">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle>문제 {qIndex + 1}</CardTitle>
+                            {questions.length > 1 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeQuestion(qIndex)}
                               >
-                                {question.options.map((option, oIndex) => (
-                                  <div key={oIndex} className="flex items-center gap-2">
-                                    <RadioGroupItem
-                                      value={oIndex.toString()}
-                                      id={`q${qIndex}-o${oIndex}`}
-                                      className="shrink-0"
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                삭제
+                              </Button>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>문제 텍스트</Label>
+                            <Input
+                              placeholder="문제 텍스트를 입력하세요"
+                              value={question.text}
+                              onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                              <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                라디오 버튼을 클릭하여 정답을 표시하세요
+                              </Label>
+                            </div>
+                            <RadioGroup
+                              value={question.correctAnswer.toString()}
+                              onValueChange={(value) =>
+                                updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                              }
+                            >
+                              {question.options.map((option, oIndex) => (
+                                <div key={oIndex} className="flex items-center gap-2">
+                                  <RadioGroupItem
+                                    value={oIndex.toString()}
+                                    id={`q${qIndex}-o${oIndex}`}
+                                    className="shrink-0"
+                                  />
+                                  <div className="flex-1">
+                                    <Input
+                                      placeholder={`선택지 ${oIndex + 1}`}
+                                      value={option}
+                                      onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
                                     />
-                                    <div className="flex-1">
-                                      <Input
-                                        placeholder={`선택지 ${oIndex + 1}`}
-                                        value={option}
-                                        onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                                      />
-                                    </div>
-                                    {question.correctAnswer === oIndex && (
-                                      <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
-                                        ✓ 정답
-                                      </span>
-                                    )}
                                   </div>
-                                ))}
-                              </RadioGroup>
-                            </div>
+                                  {question.correctAnswer === oIndex && (
+                                    <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
+                                      ✓ 정답
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </RadioGroup>
+                          </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor={`explanation-${qIndex}`}>설명 (선택사항)</Label>
-                              <Textarea
-                                id={`explanation-${qIndex}`}
-                                placeholder="이 정답이 맞는 이유를 설명하세요..."
-                                value={question.explanation}
-                                onChange={(e) => updateQuestion(qIndex, "explanation", e.target.value)}
-                                rows={3}
-                              />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`explanation-${qIndex}`}>설명 (선택사항)</Label>
+                            <Textarea
+                              id={`explanation-${qIndex}`}
+                              placeholder="이 정답이 맞는 이유를 설명하세요..."
+                              value={question.explanation}
+                              onChange={(e) => updateQuestion(qIndex, "explanation", e.target.value)}
+                              rows={3}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
 
-                    <Button onClick={addQuestion} variant="outline" className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      문제 추가
-                    </Button>
-
-                    <BulkQuestionInput onAddQuestions={addBulkQuestions} />
-                  </CardContent>
-                </Card>
-              </div>
+                  <Button onClick={addQuestion} variant="outline" className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    문제 추가
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
