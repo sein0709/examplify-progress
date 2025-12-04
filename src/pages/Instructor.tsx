@@ -632,14 +632,20 @@ const Instructor = () => {
 
                   <div className="space-y-6">
                     {questions.map((question, qIndex) => (
-                      <Card key={qIndex} id={`question-form-${qIndex}`} className="border-2">
-                        <CardHeader>
+                      <Card key={qIndex} id={`question-form-${qIndex}`} className="border-2 border-accent/30 hover:border-accent/50 transition-colors">
+                        <CardHeader className="bg-gradient-to-r from-accent/10 to-transparent">
                           <div className="flex items-center justify-between">
-                            <CardTitle>문제 {qIndex + 1}</CardTitle>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-lg shadow-sm">
+                                {qIndex + 1}
+                              </div>
+                              <CardTitle>문제 {qIndex + 1}</CardTitle>
+                            </div>
                             {questions.length > 1 && (
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 onClick={() => removeQuestion(qIndex)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
