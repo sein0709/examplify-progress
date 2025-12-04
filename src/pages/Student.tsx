@@ -171,8 +171,8 @@ const Student = () => {
     setShowResults(false);
   };
 
-  const handleAnswerSelect = (answer: number) => {
-    setSelectedAnswers({ ...selectedAnswers, [currentQuestionIndex]: answer });
+  const handleAnswerSelect = (questionIndex: number, answer: number) => {
+    setSelectedAnswers({ ...selectedAnswers, [questionIndex]: answer });
   };
 
   const handleNext = () => {
@@ -313,9 +313,9 @@ const Student = () => {
   }
 
   if (currentAssignment && !showResults) {
-    const currentQuestion = currentAssignment.questions[currentQuestionIndex];
-    const progress =
-      ((currentQuestionIndex + 1) / currentAssignment.questions.length) * 100;
+    const answeredCount = Object.keys(selectedAnswers).length;
+    const totalQuestions = currentAssignment.questions.length;
+    const progress = (answeredCount / totalQuestions) * 100;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-6">
@@ -338,8 +338,7 @@ const Student = () => {
           <div className="space-y-3">
             <div className="flex justify-between text-sm font-medium">
               <span className="text-muted-foreground">
-                Question {currentQuestionIndex + 1} of{" "}
-                {currentAssignment.questions.length}
+                {answeredCount} / {totalQuestions} answered
               </span>
               <span className="text-primary font-semibold">{Math.round(progress)}%</span>
             </div>
@@ -381,95 +380,97 @@ const Student = () => {
               </Card>
             )}
 
-            {/* Right: Marking Interface */}
-            <div className="h-full flex flex-col space-y-6">
-              <Card className="flex-1 flex flex-col shadow-xl border-2 hover:shadow-2xl transition-all duration-300 animate-scale-in">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl leading-relaxed">{currentQuestion.text}</CardTitle>
+            {/* Right: OMR Answer Sheet */}
+            <div className="h-full flex flex-col space-y-4">
+              <Card className="flex-1 flex flex-col shadow-xl border-2">
+                <CardHeader className="pb-3 border-b">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5" />
+                    OMR Answer Sheet
+                  </CardTitle>
+                  <CardDescription>
+                    Click on a bubble to select your answer for each question
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <RadioGroup
-                    value={selectedAnswers[currentQuestionIndex]?.toString() || ""}
-                    onValueChange={(value) => handleAnswerSelect(parseInt(value))}
-                  >
-                    <div className="space-y-3">
-                      {currentQuestion.options.map((option, index) => {
-                        const isSelected = selectedAnswers[currentQuestionIndex] === index;
-                        return (
-                          <div
-                            key={index}
-                            className={cn(
-                              "flex items-center space-x-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-300",
-                              "hover:scale-[1.02] hover:shadow-md",
-                              isSelected 
-                                ? "bg-accent/50 border-primary shadow-lg scale-[1.02] animate-scale-in ring-2 ring-primary/20" 
-                                : "border-border hover:border-accent"
-                            )}
-                          >
-                            <RadioGroupItem 
-                              value={index.toString()} 
-                              id={`option-${index}`}
-                              className={cn(
-                                "transition-transform duration-200",
-                                isSelected && "scale-110"
-                              )}
-                            />
-                            <Label
-                              htmlFor={`option-${index}`}
-                              className={cn(
-                                "flex-1 cursor-pointer text-base transition-all duration-200",
-                                isSelected && "font-medium text-foreground translate-x-0.5"
-                              )}
-                            >
-                              {option}
-                            </Label>
+                <CardContent className="flex-1 overflow-auto p-4">
+                  <div className="space-y-1">
+                    {/* Header row */}
+                    <div className="flex items-center gap-2 pb-2 border-b sticky top-0 bg-card z-10">
+                      <div className="w-16 text-center text-sm font-medium text-muted-foreground">Q#</div>
+                      <div className="flex-1 flex justify-center gap-4">
+                        {[1, 2, 3, 4, 5].map((num) => (
+                          <div key={num} className="w-10 text-center text-sm font-medium text-muted-foreground">
+                            {num}
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </RadioGroup>
+
+                    {/* Question rows */}
+                    {currentAssignment.questions.map((question, qIndex) => (
+                      <div 
+                        key={question.id} 
+                        className={cn(
+                          "flex items-center gap-2 py-2 px-1 rounded-lg transition-colors",
+                          selectedAnswers[qIndex] !== undefined && "bg-accent/20"
+                        )}
+                      >
+                        <div className="w-16 text-center">
+                          <span className={cn(
+                            "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors",
+                            selectedAnswers[qIndex] !== undefined 
+                              ? "bg-primary text-primary-foreground" 
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {qIndex + 1}
+                          </span>
+                        </div>
+                        <div className="flex-1 flex justify-center gap-4">
+                          {[0, 1, 2, 3, 4].map((optionIndex) => {
+                            const isSelected = selectedAnswers[qIndex] === optionIndex;
+                            return (
+                              <button
+                                key={optionIndex}
+                                type="button"
+                                onClick={() => handleAnswerSelect(qIndex, optionIndex)}
+                                className={cn(
+                                  "w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all duration-200",
+                                  "hover:scale-110 hover:shadow-md",
+                                  isSelected
+                                    ? "bg-primary border-primary text-primary-foreground shadow-lg scale-105 animate-scale-in"
+                                    : "border-border bg-background hover:border-primary/50 hover:bg-accent/30"
+                                )}
+                              >
+                                {optionIndex + 1}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
 
-              <div className="flex justify-between gap-4">
-                <Button
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentQuestionIndex === 0}
-                  className="hover:scale-105 transition-transform shadow-md"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Previous
-                </Button>
-
-                {currentQuestionIndex === currentAssignment.questions.length - 1 ? (
-                  <Button 
-                    onClick={handleSubmit} 
-                    disabled={submitting}
-                    className="hover:scale-105 transition-transform shadow-lg hover:shadow-xl bg-gradient-to-r from-primary to-primary/90"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        Submit Assignment
-                        <CheckCircle2 className="ml-2 h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
+              {/* Submit Button */}
+              <Button 
+                onClick={handleSubmit} 
+                disabled={submitting || answeredCount < totalQuestions}
+                size="lg"
+                className="w-full hover:scale-[1.02] transition-transform shadow-lg hover:shadow-xl bg-gradient-to-r from-primary to-primary/90"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Submitting...
+                  </>
                 ) : (
-                  <Button 
-                    onClick={handleNext}
-                    className="hover:scale-105 transition-transform shadow-md"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  <>
+                    Submit Assignment ({answeredCount}/{totalQuestions})
+                    <CheckCircle2 className="ml-2 h-5 w-5" />
+                  </>
                 )}
-              </div>
+              </Button>
             </div>
           </div>
         </div>
