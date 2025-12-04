@@ -437,7 +437,7 @@ const Student = () => {
                                   "w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all duration-200",
                                   "hover:scale-110 hover:shadow-md",
                                   isSelected
-                                    ? "bg-primary border-primary text-primary-foreground shadow-lg scale-105 animate-scale-in"
+                                    ? "bg-[#EB6762] border-[#EB6762] text-white shadow-lg scale-105 animate-scale-in ring-2 ring-[#EB6762]/30"
                                     : "border-border bg-background hover:border-primary/50 hover:bg-accent/30"
                                 )}
                               >
