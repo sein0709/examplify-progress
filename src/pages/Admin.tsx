@@ -723,12 +723,13 @@ const Admin = () => {
             </TabsContent>
 
             <TabsContent value="create">
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Left Column - Assignment Details */}
-                <div className="space-y-6">
-                  <Card>
+              <div className="space-y-6">
+                {/* Top Row - Assignment Details and Bulk Question Input */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Left - Assignment Details */}
+                  <Card className="h-fit">
                     <CardHeader>
-                      <CardTitle>과제 정보</CardTitle>
+                      <CardTitle>과제 생성</CardTitle>
                       <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
@@ -868,23 +869,25 @@ const Admin = () => {
                       </Button>
                     </CardContent>
                   </Card>
+
+                  {/* Right - Bulk Question Input */}
+                  <div className="h-fit">
+                    <BulkQuestionInput 
+                      onAddQuestions={(newQuestions) => {
+                        setQuestions(prev => {
+                          const hasContent = prev.length > 0 && (prev[0].text || prev[0].options.some(o => o));
+                          if (hasContent) {
+                            return [...prev, ...newQuestions];
+                          }
+                          return newQuestions;
+                        });
+                      }}
+                    />
+                  </div>
                 </div>
 
-                {/* Right Column - Questions */}
-                <div className="space-y-6">
-                  <BulkQuestionInput 
-                    onAddQuestions={(newQuestions) => {
-                      setQuestions(prev => {
-                        const hasContent = prev.length > 0 && (prev[0].text || prev[0].options.some(o => o));
-                        if (hasContent) {
-                          return [...prev, ...newQuestions];
-                        }
-                        return newQuestions;
-                      });
-                    }}
-                  />
-
-                  <Card>
+                {/* Bottom - Questions */}
+                <Card>
                     <CardHeader>
                       <CardTitle>문제</CardTitle>
                       <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
@@ -1002,7 +1005,6 @@ const Admin = () => {
                       </Button>
                     </CardContent>
                   </Card>
-                </div>
               </div>
             </TabsContent>
 
