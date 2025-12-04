@@ -117,7 +117,7 @@ const Instructor = () => {
       if (error) throw error;
       setMyAssignments(data || []);
     } catch (error: any) {
-      toast.error("Failed to fetch assignments: " + error.message);
+      toast.error("과제 목록을 불러오는데 실패했습니다: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -137,7 +137,7 @@ const Instructor = () => {
       if (error) throw error;
       setSelectedAssignmentSubmissions(data || []);
     } catch (error: any) {
-      toast.error("Failed to fetch submissions: " + error.message);
+      toast.error("제출 목록을 불러오는데 실패했습니다: " + error.message);
     }
   };
 
@@ -189,7 +189,7 @@ const Instructor = () => {
         if (!progressMap.has(sa.student_id)) {
           progressMap.set(sa.student_id, {
             studentId: sa.student_id,
-            studentName: profile.full_name || "Unknown",
+            studentName: profile.full_name || "알 수 없음",
             studentEmail: profile.email || "",
             assignments: {},
             averageScore: 0,
@@ -225,7 +225,7 @@ const Instructor = () => {
       
       setStudentProgress(Array.from(progressMap.values()));
     } catch (error: any) {
-      toast.error("Failed to fetch student progress: " + error.message);
+      toast.error("학생 진도를 불러오는데 실패했습니다: " + error.message);
     } finally {
       setProgressLoading(false);
     }
@@ -237,7 +237,7 @@ const Instructor = () => {
 
   const addBulkQuestions = (bulkQuestions: QuestionForm[]) => {
     setQuestions([...questions, ...bulkQuestions]);
-    toast.success(`Added ${bulkQuestions.length} questions`);
+    toast.success(`${bulkQuestions.length}개 문제가 추가되었습니다`);
   };
 
   const handleFileUpload = async (file: File): Promise<string | null> => {
@@ -247,7 +247,7 @@ const Instructor = () => {
       // Validate file size (10MB max)
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
       if (file.size > MAX_FILE_SIZE) {
-        toast.error("File size exceeds 10MB limit");
+        toast.error("파일 크기가 10MB 제한을 초과했습니다");
         return null;
       }
 
@@ -264,7 +264,7 @@ const Instructor = () => {
       ];
       
       if (!allowedTypes.includes(file.type)) {
-        toast.error("Invalid file type. Allowed: PDF, Word, PowerPoint, Images");
+        toast.error("올바르지 않은 파일 형식입니다. 허용: PDF, Word, PowerPoint, 이미지");
         return null;
       }
 
@@ -285,7 +285,7 @@ const Instructor = () => {
 
       return publicUrl;
     } catch (error: any) {
-      toast.error("Failed to upload file: " + error.message);
+      toast.error("파일 업로드 실패: " + error.message);
       return null;
     } finally {
       setUploading(false);
@@ -312,18 +312,18 @@ const Instructor = () => {
 
   const handleSubmit = async () => {
     if (!assignmentTitle.trim()) {
-      toast.error("Please enter an assignment title");
+      toast.error("과제 제목을 입력해주세요");
       return;
     }
 
     for (let i = 0; i < questions.length; i++) {
       if (!questions[i].text.trim()) {
-        toast.error(`Question ${i + 1} text is required`);
+        toast.error(`문제 ${i + 1}의 텍스트가 필요합니다`);
         return;
       }
       for (let j = 0; j < 4; j++) {
         if (!questions[i].options[j].trim()) {
-          toast.error(`Question ${i + 1}, Option ${j + 1} is required`);
+          toast.error(`문제 ${i + 1}, 선택지 ${j + 1}이(가) 필요합니다`);
           return;
         }
       }
@@ -391,7 +391,7 @@ const Instructor = () => {
 
       if (questionsError) throw questionsError;
 
-      toast.success("Assignment created successfully!");
+      toast.success("과제가 성공적으로 생성되었습니다!");
       setAssignmentTitle("");
       setDescription("");
       setDueDate(undefined);
@@ -401,7 +401,7 @@ const Instructor = () => {
       setQuestions([{ text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "" }]);
       fetchMyAssignments();
     } catch (error: any) {
-      toast.error("Failed to create assignment: " + error.message);
+      toast.error("과제 생성 실패: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -416,10 +416,10 @@ const Instructor = () => {
 
       if (error) throw error;
 
-      toast.success("Assignment deleted successfully");
+      toast.success("과제가 성공적으로 삭제되었습니다");
       fetchMyAssignments();
     } catch (error: any) {
-      toast.error("Failed to delete assignment: " + error.message);
+      toast.error("과제 삭제 실패: " + error.message);
     }
   };
 
@@ -430,14 +430,14 @@ const Instructor = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-3xl font-bold">Instructor Portal</h1>
+          <h1 className="text-3xl font-bold">강사 포털</h1>
         </div>
 
         <Tabs defaultValue="create" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="create">Create Assignment</TabsTrigger>
-            <TabsTrigger value="assignments">My Assignments</TabsTrigger>
-            <TabsTrigger value="progress">Student Progress</TabsTrigger>
+            <TabsTrigger value="create">과제 생성</TabsTrigger>
+            <TabsTrigger value="assignments">내 과제</TabsTrigger>
+            <TabsTrigger value="progress">학생 진도</TabsTrigger>
           </TabsList>
 
           <TabsContent value="create">
@@ -446,32 +446,32 @@ const Instructor = () => {
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Assignment Details</CardTitle>
-                    <CardDescription>Set up basic information for your assignment</CardDescription>
+                    <CardTitle>과제 정보</CardTitle>
+                    <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-2">
-                      <Label htmlFor="title">Assignment Title</Label>
+                      <Label htmlFor="title">과제 제목</Label>
                       <Input
                         id="title"
-                        placeholder="Enter assignment title"
+                        placeholder="과제 제목을 입력하세요"
                         value={assignmentTitle}
                         onChange={(e) => setAssignmentTitle(e.target.value)}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description (Optional)</Label>
+                      <Label htmlFor="description">설명 (선택사항)</Label>
                       <Input
                         id="description"
-                        placeholder="Enter assignment description"
+                        placeholder="과제 설명을 입력하세요"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Due Date (Optional)</Label>
+                      <Label>마감일 (선택사항)</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -482,7 +482,7 @@ const Instructor = () => {
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dueDate ? format(dueDate, "PPP") : "Pick a date"}
+                            {dueDate ? format(dueDate, "PPP") : "날짜 선택"}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
@@ -498,7 +498,7 @@ const Instructor = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="file">Upload File (Optional)</Label>
+                      <Label htmlFor="file">파일 업로드 (선택사항)</Label>
                       <div className="flex gap-2 items-center">
                         <Input
                           id="file"
@@ -524,7 +524,7 @@ const Instructor = () => {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Upload an image or PDF file to attach to this assignment
+                        이 과제에 첨부할 이미지 또는 PDF 파일을 업로드하세요
                       </p>
                     </div>
 
@@ -536,23 +536,23 @@ const Instructor = () => {
                           onCheckedChange={(checked) => setIsResubmittable(checked as boolean)}
                         />
                         <Label htmlFor="resubmittable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                          Allow students to resubmit this assignment
+                          학생들이 이 과제를 재제출할 수 있도록 허용
                         </Label>
                       </div>
                       
                       {isResubmittable && (
                         <div className="space-y-2 pl-6">
-                          <Label htmlFor="maxAttempts">Maximum number of attempts</Label>
+                          <Label htmlFor="maxAttempts">최대 시도 횟수</Label>
                           <Input
                             id="maxAttempts"
                             type="number"
                             min="1"
                             value={maxAttempts}
                             onChange={(e) => setMaxAttempts(Math.max(1, parseInt(e.target.value) || 1))}
-                            placeholder="Enter number of attempts"
+                            placeholder="시도 횟수를 입력하세요"
                           />
                           <p className="text-xs text-muted-foreground">
-                            Students can submit this assignment up to {maxAttempts} time{maxAttempts !== 1 ? 's' : ''}
+                            학생들은 이 과제를 최대 {maxAttempts}회까지 제출할 수 있습니다
                           </p>
                         </div>
                       )}
@@ -562,10 +562,10 @@ const Instructor = () => {
                       {submitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
+                          생성 중...
                         </>
                       ) : (
-                        "Create Assignment"
+                        "과제 생성"
                       )}
                     </Button>
                   </CardContent>
@@ -576,8 +576,8 @@ const Instructor = () => {
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Questions</CardTitle>
-                    <CardDescription>Add and configure questions for your assignment</CardDescription>
+                    <CardTitle>문제</CardTitle>
+                    <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-3 gap-4">
@@ -592,7 +592,7 @@ const Instructor = () => {
                         >
                           <CardHeader className="flex-1 flex items-center justify-center p-4">
                             <CardTitle className="text-center text-sm">
-                              Question {qIndex + 1}
+                              문제 {qIndex + 1}
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="p-4 pt-0">
@@ -611,7 +611,7 @@ const Instructor = () => {
                         <Card key={qIndex} id={`question-form-${qIndex}`} className="border-2">
                           <CardHeader>
                             <div className="flex items-center justify-between">
-                              <CardTitle>Question {qIndex + 1}</CardTitle>
+                              <CardTitle>문제 {qIndex + 1}</CardTitle>
                               {questions.length > 1 && (
                                 <Button
                                   variant="ghost"
@@ -619,16 +619,16 @@ const Instructor = () => {
                                   onClick={() => removeQuestion(qIndex)}
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
-                                  Remove
+                                  삭제
                                 </Button>
                               )}
                             </div>
                           </CardHeader>
                           <CardContent className="space-y-4">
                             <div className="space-y-2">
-                              <Label>Question Text</Label>
+                              <Label>문제 텍스트</Label>
                               <Input
-                                placeholder="Enter question text"
+                                placeholder="문제 텍스트를 입력하세요"
                                 value={question.text}
                                 onChange={(e) => updateQuestion(qIndex, "text", e.target.value)}
                               />
@@ -638,7 +638,7 @@ const Instructor = () => {
                               <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
                                 <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
                                 <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                  Click the radio button to mark the correct answer
+                                  라디오 버튼을 클릭하여 정답을 표시하세요
                                 </Label>
                               </div>
                               <RadioGroup
@@ -656,14 +656,14 @@ const Instructor = () => {
                                     />
                                     <div className="flex-1">
                                       <Input
-                                        placeholder={`Option ${oIndex + 1}`}
+                                        placeholder={`선택지 ${oIndex + 1}`}
                                         value={option}
                                         onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
                                       />
                                     </div>
                                     {question.correctAnswer === oIndex && (
                                       <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
-                                        ✓ Correct
+                                        ✓ 정답
                                       </span>
                                     )}
                                   </div>
@@ -672,10 +672,10 @@ const Instructor = () => {
                             </div>
 
                             <div className="space-y-2">
-                              <Label htmlFor={`explanation-${qIndex}`}>Explanation (Optional)</Label>
+                              <Label htmlFor={`explanation-${qIndex}`}>설명 (선택사항)</Label>
                               <Textarea
                                 id={`explanation-${qIndex}`}
-                                placeholder="Explain why this answer is correct..."
+                                placeholder="이 정답이 맞는 이유를 설명하세요..."
                                 value={question.explanation}
                                 onChange={(e) => updateQuestion(qIndex, "explanation", e.target.value)}
                                 rows={3}
@@ -688,7 +688,7 @@ const Instructor = () => {
 
                     <Button onClick={addQuestion} variant="outline" className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Question
+                      문제 추가
                     </Button>
 
                     <BulkQuestionInput onAddQuestions={addBulkQuestions} />
@@ -701,8 +701,8 @@ const Instructor = () => {
           <TabsContent value="assignments">
             <Card>
               <CardHeader>
-                <CardTitle>My Assignments</CardTitle>
-                <CardDescription>View and manage your created assignments</CardDescription>
+                <CardTitle>내 과제</CardTitle>
+                <CardDescription>생성한 과제를 확인하고 관리하세요</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -711,17 +711,17 @@ const Instructor = () => {
                   </div>
                 ) : myAssignments.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
-                    No assignments created yet
+                    아직 생성된 과제가 없습니다
                   </p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Questions</TableHead>
-                        <TableHead>Submissions</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead>제목</TableHead>
+                        <TableHead>문제</TableHead>
+                        <TableHead>제출</TableHead>
+                        <TableHead>마감일</TableHead>
+                        <TableHead>작업</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -740,7 +740,7 @@ const Instructor = () => {
                           <TableCell>
                             {assignment.due_date
                               ? new Date(assignment.due_date).toLocaleDateString()
-                              : "No due date"}
+                              : "마감일 없음"}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
@@ -753,7 +753,7 @@ const Instructor = () => {
                                 variant="destructive"
                                 onClick={() => deleteAssignment(assignment.id)}
                               >
-                                Delete
+                                삭제
                               </Button>
                             </div>
                           </TableCell>
@@ -765,14 +765,14 @@ const Instructor = () => {
 
                 {selectedAssignmentSubmissions.length > 0 && (
                   <div className="mt-8">
-                    <h3 className="text-lg font-semibold mb-4">Submissions</h3>
+                    <h3 className="text-lg font-semibold mb-4">제출 목록</h3>
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Score</TableHead>
-                          <TableHead>Percentage</TableHead>
-                          <TableHead>Submitted</TableHead>
+                          <TableHead>학생</TableHead>
+                          <TableHead>점수</TableHead>
+                          <TableHead>백분율</TableHead>
+                          <TableHead>제출일</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -782,7 +782,7 @@ const Instructor = () => {
                             <TableCell>
                               {submission.score !== null
                                 ? `${submission.score}/${submission.total_questions}`
-                                : "Pending"}
+                                : "대기중"}
                             </TableCell>
                             <TableCell>
                               {submission.score !== null
@@ -810,17 +810,17 @@ const Instructor = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                    <CardTitle className="text-sm font-medium">전체 학생</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{studentProgress.length}</div>
-                    <p className="text-xs text-muted-foreground">assigned students</p>
+                    <p className="text-xs text-muted-foreground">할당된 학생</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                    <CardTitle className="text-sm font-medium">평균 점수</CardTitle>
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -829,12 +829,12 @@ const Instructor = () => {
                         ? `${Math.round(studentProgress.reduce((acc, s) => acc + s.averageScore, 0) / studentProgress.length)}%`
                         : "N/A"}
                     </div>
-                    <p className="text-xs text-muted-foreground">across all students</p>
+                    <p className="text-xs text-muted-foreground">전체 학생 기준</p>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                    <CardTitle className="text-sm font-medium">완료율</CardTitle>
                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
@@ -853,7 +853,7 @@ const Instructor = () => {
                           : "N/A";
                       })()}
                     </div>
-                    <p className="text-xs text-muted-foreground">submissions received</p>
+                    <p className="text-xs text-muted-foreground">제출 완료</p>
                   </CardContent>
                 </Card>
               </div>
@@ -861,8 +861,8 @@ const Instructor = () => {
               {/* Progress Table */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Student Progress Overview</CardTitle>
-                  <CardDescription>View scores for all assigned students across your assignments</CardDescription>
+                  <CardTitle>학생 진도 현황</CardTitle>
+                  <CardDescription>모든 할당된 학생들의 과제별 점수를 확인하세요</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {progressLoading ? (
@@ -871,14 +871,14 @@ const Instructor = () => {
                     </div>
                   ) : studentProgress.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">
-                      No students assigned to your assignments yet
+                      아직 과제에 할당된 학생이 없습니다
                     </p>
                   ) : (
                     <div className="overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead className="sticky left-0 bg-background">Student</TableHead>
+                            <TableHead className="sticky left-0 bg-background">학생</TableHead>
                             {myAssignments.map((assignment) => (
                               <TableHead key={assignment.id} className="text-center min-w-[100px]">
                                 {assignment.title.length > 15
@@ -886,7 +886,7 @@ const Instructor = () => {
                                   : assignment.title}
                               </TableHead>
                             ))}
-                            <TableHead className="text-center">Average</TableHead>
+                            <TableHead className="text-center">평균</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -904,7 +904,7 @@ const Instructor = () => {
                                   return (
                                     <TableCell key={assignment.id} className="text-center">
                                       <Badge variant="outline" className="text-muted-foreground">
-                                        Not Assigned
+                                        미할당
                                       </Badge>
                                     </TableCell>
                                   );
@@ -912,7 +912,7 @@ const Instructor = () => {
                                 if (!assignmentData.submitted) {
                                   return (
                                     <TableCell key={assignment.id} className="text-center">
-                                      <Badge variant="secondary">Pending</Badge>
+                                      <Badge variant="secondary">대기중</Badge>
                                     </TableCell>
                                   );
                                 }
@@ -948,10 +948,10 @@ const Instructor = () => {
 
               {/* Bar Chart */}
               {studentProgress.length > 0 && (
-                <Card>
+              <Card>
                   <CardHeader>
-                    <CardTitle>Student Average Scores</CardTitle>
-                    <CardDescription>Visual comparison of student performance</CardDescription>
+                    <CardTitle>학생별 평균 점수</CardTitle>
+                    <CardDescription>학생 성과 시각적 비교</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="h-[300px]">
@@ -972,7 +972,7 @@ const Instructor = () => {
                               border: "1px solid hsl(var(--border))",
                               borderRadius: "6px",
                             }}
-                            formatter={(value: number) => [`${value}%`, "Average Score"]}
+                            formatter={(value: number) => [`${value}%`, "평균 점수"]}
                           />
                           <Bar dataKey="score" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                         </BarChart>

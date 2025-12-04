@@ -34,7 +34,7 @@ const PendingApproval = () => {
         <div className="flex flex-col items-center text-center space-y-6">
           <div className="flex items-center justify-center gap-3">
             <BookOpen className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Homework Hub</h1>
+            <h1 className="text-2xl font-bold text-foreground">과제 관리 시스템</h1>
           </div>
 
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/20">
@@ -43,29 +43,29 @@ const PendingApproval = () => {
 
           <div className="space-y-3">
             <h2 className="text-2xl font-bold text-foreground">
-              Pending Approval
+              승인 대기중
             </h2>
             <p className="text-muted-foreground">
-              Thank you for registering! Your account is currently awaiting approval from an administrator.
+              등록해 주셔서 감사합니다! 현재 계정이 관리자 승인을 기다리고 있습니다.
             </p>
             <p className="text-sm text-muted-foreground">
-              You'll be able to access the platform once your account has been verified. This usually takes 1-2 business days.
+              계정이 확인되면 플랫폼에 접근할 수 있습니다. 보통 1-2 영업일 정도 소요됩니다.
             </p>
           </div>
 
           {profile && (
             <div className="w-full space-y-2 rounded-lg bg-accent/10 p-4 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Email:</span>
+                <span className="text-muted-foreground">이메일:</span>
                 <span className="font-medium">{user?.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Name:</span>
+                <span className="text-muted-foreground">이름:</span>
                 <span className="font-medium">{profile.full_name || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Status:</span>
-                <span className="font-medium text-amber-600">Pending</span>
+                <span className="text-muted-foreground">상태:</span>
+                <span className="font-medium text-amber-600">대기중</span>
               </div>
             </div>
           )}
@@ -76,7 +76,7 @@ const PendingApproval = () => {
             className="w-full"
           >
             <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
+            로그아웃
           </Button>
         </div>
       </Card>
