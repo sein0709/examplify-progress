@@ -14,17 +14,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { BulkQuestionInput } from "@/components/BulkQuestionInput";
 import { StudentAssignmentManager } from "@/components/StudentAssignmentManager";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 interface QuestionForm {
   text: string;
   options: string[];
@@ -52,6 +55,21 @@ interface Submission {
   };
 }
 
+interface StudentProgress {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  assignments: {
+    [assignmentId: string]: {
+      score: number | null;
+      totalQuestions: number;
+      submitted: boolean;
+    };
+  };
+  averageScore: number;
+  completedCount: number;
+}
+
 const Instructor = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -69,10 +87,18 @@ const Instructor = () => {
   const [selectedAssignmentSubmissions, setSelectedAssignmentSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [studentProgress, setStudentProgress] = useState<StudentProgress[]>([]);
+  const [progressLoading, setProgressLoading] = useState(false);
 
   useEffect(() => {
     fetchMyAssignments();
   }, [user]);
+
+  useEffect(() => {
+    if (myAssignments.length > 0) {
+      fetchStudentProgress();
+    }
+  }, [myAssignments]);
 
   const fetchMyAssignments = async () => {
     if (!user) return;
@@ -115,7 +141,96 @@ const Instructor = () => {
     }
   };
 
-  const addQuestion = () => {
+  const fetchStudentProgress = async () => {
+    if (!user || myAssignments.length === 0) return;
+    setProgressLoading(true);
+    try {
+      const assignmentIds = myAssignments.map(a => a.id);
+      
+      // Fetch all student assignments for instructor's assignments
+      const { data: studentAssignmentsData, error: saError } = await supabase
+        .from("student_assignments")
+        .select("student_id, assignment_id")
+        .in("assignment_id", assignmentIds);
+      
+      if (saError) throw saError;
+      
+      // Get unique student IDs
+      const studentIds = [...new Set(studentAssignmentsData?.map(sa => sa.student_id) || [])];
+      
+      if (studentIds.length === 0) {
+        setStudentProgress([]);
+        return;
+      }
+      
+      // Fetch student profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", studentIds);
+      
+      if (profilesError) throw profilesError;
+      
+      // Fetch all submissions for these assignments
+      const { data: submissionsData, error: subError } = await supabase
+        .from("submissions")
+        .select("student_id, assignment_id, score, total_questions")
+        .in("assignment_id", assignmentIds);
+      
+      if (subError) throw subError;
+      
+      // Build student progress map
+      const progressMap = new Map<string, StudentProgress>();
+      
+      studentAssignmentsData?.forEach(sa => {
+        const profile = profilesData?.find(p => p.id === sa.student_id);
+        if (!profile) return;
+        
+        if (!progressMap.has(sa.student_id)) {
+          progressMap.set(sa.student_id, {
+            studentId: sa.student_id,
+            studentName: profile.full_name || "Unknown",
+            studentEmail: profile.email || "",
+            assignments: {},
+            averageScore: 0,
+            completedCount: 0,
+          });
+        }
+        
+        const studentProgress = progressMap.get(sa.student_id)!;
+        const submission = submissionsData?.find(
+          s => s.student_id === sa.student_id && s.assignment_id === sa.assignment_id
+        );
+        
+        studentProgress.assignments[sa.assignment_id] = {
+          score: submission?.score ?? null,
+          totalQuestions: submission?.total_questions ?? 0,
+          submitted: !!submission,
+        };
+      });
+      
+      // Calculate averages
+      progressMap.forEach(sp => {
+        const scores: number[] = [];
+        let completed = 0;
+        Object.values(sp.assignments).forEach(a => {
+          if (a.submitted && a.score !== null) {
+            scores.push((a.score / a.totalQuestions) * 100);
+            completed++;
+          }
+        });
+        sp.averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+        sp.completedCount = completed;
+      });
+      
+      setStudentProgress(Array.from(progressMap.values()));
+    } catch (error: any) {
+      toast.error("Failed to fetch student progress: " + error.message);
+    } finally {
+      setProgressLoading(false);
+    }
+  };
+
     setQuestions([...questions, { text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "" }]);
   };
 
@@ -321,6 +436,7 @@ const Instructor = () => {
           <TabsList>
             <TabsTrigger value="create">Create Assignment</TabsTrigger>
             <TabsTrigger value="assignments">My Assignments</TabsTrigger>
+            <TabsTrigger value="progress">Student Progress</TabsTrigger>
           </TabsList>
 
           <TabsContent value="create">
@@ -685,6 +801,186 @@ const Instructor = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="progress">
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{studentProgress.length}</div>
+                    <p className="text-xs text-muted-foreground">assigned students</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {studentProgress.length > 0
+                        ? `${Math.round(studentProgress.reduce((acc, s) => acc + s.averageScore, 0) / studentProgress.length)}%`
+                        : "N/A"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">across all students</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {(() => {
+                        const totalAssigned = studentProgress.reduce(
+                          (acc, s) => acc + Object.keys(s.assignments).length,
+                          0
+                        );
+                        const totalCompleted = studentProgress.reduce(
+                          (acc, s) => acc + s.completedCount,
+                          0
+                        );
+                        return totalAssigned > 0
+                          ? `${Math.round((totalCompleted / totalAssigned) * 100)}%`
+                          : "N/A";
+                      })()}
+                    </div>
+                    <p className="text-xs text-muted-foreground">submissions received</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Progress Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Student Progress Overview</CardTitle>
+                  <CardDescription>View scores for all assigned students across your assignments</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {progressLoading ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : studentProgress.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No students assigned to your assignments yet
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="sticky left-0 bg-background">Student</TableHead>
+                            {myAssignments.map((assignment) => (
+                              <TableHead key={assignment.id} className="text-center min-w-[100px]">
+                                {assignment.title.length > 15
+                                  ? assignment.title.substring(0, 15) + "..."
+                                  : assignment.title}
+                              </TableHead>
+                            ))}
+                            <TableHead className="text-center">Average</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {studentProgress.map((student) => (
+                            <TableRow key={student.studentId}>
+                              <TableCell className="sticky left-0 bg-background font-medium">
+                                <div>
+                                  <div>{student.studentName}</div>
+                                  <div className="text-xs text-muted-foreground">{student.studentEmail}</div>
+                                </div>
+                              </TableCell>
+                              {myAssignments.map((assignment) => {
+                                const assignmentData = student.assignments[assignment.id];
+                                if (!assignmentData) {
+                                  return (
+                                    <TableCell key={assignment.id} className="text-center">
+                                      <Badge variant="outline" className="text-muted-foreground">
+                                        Not Assigned
+                                      </Badge>
+                                    </TableCell>
+                                  );
+                                }
+                                if (!assignmentData.submitted) {
+                                  return (
+                                    <TableCell key={assignment.id} className="text-center">
+                                      <Badge variant="secondary">Pending</Badge>
+                                    </TableCell>
+                                  );
+                                }
+                                const percentage =
+                                  assignmentData.score !== null
+                                    ? Math.round((assignmentData.score / assignmentData.totalQuestions) * 100)
+                                    : 0;
+                                const colorClass =
+                                  percentage >= 80
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                    : percentage >= 60
+                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+                                return (
+                                  <TableCell key={assignment.id} className="text-center">
+                                    <Badge className={colorClass}>{percentage}%</Badge>
+                                  </TableCell>
+                                );
+                              })}
+                              <TableCell className="text-center">
+                                <Badge variant="default">
+                                  {Math.round(student.averageScore)}%
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bar Chart */}
+              {studentProgress.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Student Average Scores</CardTitle>
+                    <CardDescription>Visual comparison of student performance</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={studentProgress.map((s) => ({
+                            name: s.studentName.split(" ")[0],
+                            score: Math.round(s.averageScore),
+                          }))}
+                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
+                          <YAxis domain={[0, 100]} className="text-xs fill-muted-foreground" />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--background))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "6px",
+                            }}
+                            formatter={(value: number) => [`${value}%`, "Average Score"]}
+                          />
+                          <Bar dataKey="score" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
