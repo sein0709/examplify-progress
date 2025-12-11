@@ -23,6 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { BulkQuestionInput } from "@/components/BulkQuestionInput";
 import { StudentSelector } from "@/components/StudentSelector";
+import { MathInput } from "@/components/MathInput";
+import { MathDisplay } from "@/components/MathDisplay";
 interface UserProfile {
   id: string;
   full_name: string;
@@ -65,6 +67,8 @@ interface QuestionForm {
   options: string[];
   correctAnswer: number;
   explanation: string;
+  questionType: "multiple_choice" | "free_response";
+  modelAnswer: string;
 }
 interface Instructor {
   id: string;
@@ -89,11 +93,13 @@ const Admin = () => {
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
-  const [questions, setQuestions] = useState<QuestionForm[]>([{
+const [questions, setQuestions] = useState<QuestionForm[]>([{
     text: "",
     options: ["", "", "", "", ""],
     correctAnswer: 0,
-    explanation: ""
+    explanation: "",
+    questionType: "multiple_choice",
+    modelAnswer: ""
   }]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -325,12 +331,14 @@ const Admin = () => {
     }
     return null;
   };
-  const addQuestion = () => {
+const addQuestion = () => {
     setQuestions([...questions, {
       text: "",
       options: ["", "", "", "", ""],
       correctAnswer: 0,
-      explanation: ""
+      explanation: "",
+      questionType: "multiple_choice",
+      modelAnswer: ""
     }]);
   };
   const handleFileUpload = async (file: File): Promise<string | null> => {
@@ -398,15 +406,17 @@ const Admin = () => {
       toast.error("과제 제목을 입력해주세요");
       return;
     }
-    for (let i = 0; i < questions.length; i++) {
+for (let i = 0; i < questions.length; i++) {
       if (!questions[i].text.trim()) {
         toast.error(`문제 ${i + 1}의 내용을 입력해주세요`);
         return;
       }
-      for (let j = 0; j < 5; j++) {
-        if (!questions[i].options[j].trim()) {
-          toast.error(`문제 ${i + 1}, 선택지 ${j + 1}을 입력해주세요`);
-          return;
+      if (questions[i].questionType === "multiple_choice") {
+        for (let j = 0; j < 5; j++) {
+          if (!questions[i].options[j].trim()) {
+            toast.error(`문제 ${i + 1}, 선택지 ${j + 1}을 입력해주세요`);
+            return;
+          }
         }
       }
     }
@@ -437,13 +447,15 @@ const Admin = () => {
         max_attempts: isResubmittable ? maxAttempts : null
       }).select().single();
       if (assignmentError) throw assignmentError;
-      const questionsToInsert = questions.map((q, index) => ({
+const questionsToInsert = questions.map((q, index) => ({
         assignment_id: assignment.id,
         text: q.text,
-        options: q.options,
-        correct_answer: q.correctAnswer,
+        options: q.questionType === "multiple_choice" ? q.options : [],
+        correct_answer: q.questionType === "multiple_choice" ? q.correctAnswer : null,
         explanation: q.explanation || null,
-        order_number: index
+        order_number: index,
+        question_type: q.questionType,
+        model_answer: q.questionType === "free_response" ? q.modelAnswer || null : null
       }));
       const {
         error: questionsError
@@ -470,11 +482,13 @@ const Admin = () => {
       setMaxAttempts(1);
       setUploadedFile(null);
       setSelectedStudentIds([]);
-      setQuestions([{
+setQuestions([{
         text: "",
         options: ["", "", "", "", ""],
         correctAnswer: 0,
-        explanation: ""
+        explanation: "",
+        questionType: "multiple_choice",
+        modelAnswer: ""
       }]);
       fetchAssignments();
     } catch (error: any) {
@@ -879,29 +893,76 @@ const Admin = () => {
                             </CardHeader>
                             <CardContent className="space-y-4">
                               <div className="space-y-2">
+                                <Label>문제 유형</Label>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant={question.questionType === "multiple_choice" ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => updateQuestion(qIndex, "questionType", "multiple_choice")}
+                                  >
+                                    객관식
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={question.questionType === "free_response" ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => updateQuestion(qIndex, "questionType", "free_response")}
+                                  >
+                                    서술형
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
                                 <Label>문제 텍스트</Label>
                                 <Input placeholder="문제 텍스트를 입력하세요" value={question.text} onChange={e => updateQuestion(qIndex, "text", e.target.value)} />
                               </div>
 
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                                  <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                    라디오 버튼을 클릭하여 정답을 표시하세요
-                                  </Label>
+                              {question.questionType === "multiple_choice" ? (
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                                    <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                      라디오 버튼을 클릭하여 정답을 표시하세요
+                                    </Label>
+                                  </div>
+                                  <RadioGroup value={question.correctAnswer.toString()} onValueChange={value => updateQuestion(qIndex, "correctAnswer", parseInt(value))}>
+                                    {question.options.map((option, oIndex) => <div key={oIndex} className="flex items-center gap-2">
+                                        <RadioGroupItem value={oIndex.toString()} id={`admin-q${qIndex}-o${oIndex}`} className="shrink-0" />
+                                        <div className="flex-1">
+                                          <Input placeholder={`선택지 ${oIndex + 1}`} value={option} onChange={e => updateOption(qIndex, oIndex, e.target.value)} />
+                                        </div>
+                                        {question.correctAnswer === oIndex && <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
+                                            ✓ 정답
+                                          </span>}
+                                      </div>)}
+                                  </RadioGroup>
                                 </div>
-                                <RadioGroup value={question.correctAnswer.toString()} onValueChange={value => updateQuestion(qIndex, "correctAnswer", parseInt(value))}>
-                                  {question.options.map((option, oIndex) => <div key={oIndex} className="flex items-center gap-2">
-                                      <RadioGroupItem value={oIndex.toString()} id={`admin-q${qIndex}-o${oIndex}`} className="shrink-0" />
-                                      <div className="flex-1">
-                                        <Input placeholder={`선택지 ${oIndex + 1}`} value={option} onChange={e => updateOption(qIndex, oIndex, e.target.value)} />
+                              ) : (
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-md">
+                                    <Info className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                    <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                                      서술형 문제는 강사가 수동으로 채점해야 합니다
+                                    </Label>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>모범 답안 (선택사항)</Label>
+                                    <MathInput
+                                      value={question.modelAnswer}
+                                      onChange={(value) => updateQuestion(qIndex, "modelAnswer", value)}
+                                      placeholder="채점 기준이 되는 모범 답안을 입력하세요..."
+                                    />
+                                    {question.modelAnswer && (
+                                      <div className="p-3 bg-muted rounded-md">
+                                        <Label className="text-xs text-muted-foreground mb-1 block">미리보기:</Label>
+                                        <MathDisplay latex={question.modelAnswer} />
                                       </div>
-                                      {question.correctAnswer === oIndex && <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
-                                          ✓ 정답
-                                        </span>}
-                                    </div>)}
-                                </RadioGroup>
-                              </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
 
                               <div className="space-y-2">
                                 <Label htmlFor={`admin-explanation-${qIndex}`}>설명 (선택사항)</Label>
