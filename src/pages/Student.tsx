@@ -228,7 +228,18 @@ const Student = () => {
 
       if (scoreError) {
         console.error("Score calculation error:", scoreError);
-        throw new Error("Failed to calculate score");
+        throw new Error(scoreError.message || "Failed to calculate score");
+      }
+
+      // Check if the response contains an error
+      if (scoreData?.error) {
+        console.error("Score calculation returned error:", scoreData.error);
+        throw new Error(scoreData.error);
+      }
+
+      if (!scoreData || typeof scoreData.score !== 'number' || typeof scoreData.total_questions !== 'number') {
+        console.error("Invalid score data received:", scoreData);
+        throw new Error("Invalid response from score calculation");
       }
 
       const { score: finalScore, total_questions: totalQuestions } = scoreData;

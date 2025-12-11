@@ -12,9 +12,23 @@ serve(async (req) => {
   }
 
   try {
-    const { assignment_id, student_answers } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { assignment_id, student_answers } = requestBody;
+    
+    console.log(`Processing submission for assignment: ${assignment_id}, answers count: ${student_answers?.length || 0}`);
     
     if (!assignment_id || !student_answers || !Array.isArray(student_answers)) {
+      console.error('Missing required fields:', { assignment_id, hasAnswers: !!student_answers, isArray: Array.isArray(student_answers) });
       return new Response(
         JSON.stringify({ error: 'Missing required fields: assignment_id and student_answers' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -22,13 +36,23 @@ serve(async (req) => {
     }
 
     // Create Supabase client with auth context
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing environment variables:', { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey });
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get the authenticated user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('Missing authorization header');
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -36,6 +60,7 @@ serve(async (req) => {
     }
 
     // Fetch questions with correct answers (using service role key)
+    console.log(`Fetching questions for assignment: ${assignment_id}`);
     const { data: questions, error: questionsError } = await supabase
       .rpc('get_assignment_questions', {
         _assignment_id: assignment_id,
@@ -45,17 +70,20 @@ serve(async (req) => {
     if (questionsError) {
       console.error('Error fetching questions:', questionsError);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch questions' }),
+        JSON.stringify({ error: `Failed to fetch questions: ${questionsError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!questions || questions.length === 0) {
+      console.error('No questions found for assignment:', assignment_id);
       return new Response(
         JSON.stringify({ error: 'No questions found for this assignment' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log(`Found ${questions.length} questions for assignment`);
 
     // Calculate score
     let score = 0;
