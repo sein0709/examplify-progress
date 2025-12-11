@@ -183,7 +183,7 @@ const Student = () => {
 
       setAssignments(formattedAssignments);
     } catch (error: any) {
-      toast.error("Failed to fetch assignments: " + error.message);
+      toast.error("과제를 불러오지 못했습니다: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -204,7 +204,7 @@ const Student = () => {
       if (error) throw error;
       setMySubmissions(data || []);
     } catch (error: any) {
-      toast.error("Failed to fetch submissions: " + error.message);
+      toast.error("제출 기록을 불러오지 못했습니다: " + error.message);
     }
   };
 
@@ -300,7 +300,7 @@ const Student = () => {
     // Check if student has exceeded max attempts
     if (currentAssignment.max_attempts && currentAssignment.submission_count) {
       if (currentAssignment.submission_count >= currentAssignment.max_attempts) {
-        toast.error(`You have reached the maximum number of attempts (${currentAssignment.max_attempts}) for this assignment`);
+        toast.error(`이 과제의 최대 제출 횟수(${currentAssignment.max_attempts}회)에 도달했습니다`);
         return;
       }
     }
@@ -413,12 +413,12 @@ const Student = () => {
         setSubmissionAnswers(savedAnswers as StudentAnswerResult[]);
       }
 
-      toast.success("Assignment submitted successfully!");
+      toast.success("과제가 제출되었습니다!");
       setShowResults(true);
       fetchAssignments();
       fetchMySubmissions();
     } catch (error: any) {
-      toast.error("Failed to submit assignment: " + error.message);
+      toast.error("과제 제출 실패: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -453,7 +453,7 @@ const Student = () => {
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/20">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground animate-pulse">Loading your assignments...</p>
+          <p className="text-muted-foreground animate-pulse">과제를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -489,7 +489,7 @@ const Student = () => {
           <div className="space-y-3">
             <div className="flex justify-between text-sm font-medium">
               <span className="text-muted-foreground">
-                {answeredCount} / {totalQuestions} answered
+                {answeredCount} / {totalQuestions} 완료
               </span>
               <span className="text-primary font-semibold">{Math.round(progress)}%</span>
             </div>
@@ -504,10 +504,10 @@ const Student = () => {
             {currentAssignment.file_url && (
               <Card className="h-full flex flex-col shadow-lg border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Paperclip className="h-5 w-5" color="#474747" />
-                    Assignment Reference Material
-                  </CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Paperclip className="h-5 w-5" color="#474747" />
+                  과제 참고 자료
+                </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1">
                   <FilePreview 
@@ -525,10 +525,10 @@ const Student = () => {
                 <CardHeader className="pb-3 border-b">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <ClipboardList className="h-5 w-5" />
-                    OMR Answer Sheet
+                    OMR 답안지
                   </CardTitle>
                   <CardDescription>
-                    Click on a bubble to select your answer for each question
+                    각 문제의 답안을 선택하세요
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 overflow-auto p-4">
@@ -690,7 +690,7 @@ const Student = () => {
         <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
           <Card className={cn("shadow-xl border-2 bg-gradient-to-br", bgGradient)}>
             <CardHeader>
-              <CardTitle className="text-center text-3xl">🎉 Assignment Complete! 🎉</CardTitle>
+              <CardTitle className="text-center text-3xl">🎉 과제 완료! 🎉</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex flex-col items-center space-y-6">
@@ -706,7 +706,7 @@ const Student = () => {
                   </p>
                   <p className={cn("text-3xl font-semibold", scoreColor)}>{percentage}%</p>
                   <p className="text-muted-foreground text-lg">
-                    {percentage >= 80 ? "Excellent work! 🌟" : percentage >= 60 ? "Good job! Keep it up! 💪" : "Keep practicing! 📚"}
+                    {percentage >= 80 ? "훌륭합니다! 🌟" : percentage >= 60 ? "잘했습니다! 💪" : "더 열심히 해보세요! 📚"}
                   </p>
                 </div>
               </div>
@@ -718,7 +718,7 @@ const Student = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Paperclip className="h-5 w-5 text-primary" />
-                  Assignment Reference Material
+                  과제 참고 자료
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -736,10 +736,10 @@ const Student = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                Review Your Answers
+                답안 확인
               </CardTitle>
               <CardDescription>
-                See which questions you got right and learn from explanations
+                어떤 문제를 맞았는지 확인하고 설명을 학습하세요
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -927,7 +927,7 @@ const Student = () => {
             className="w-full h-12 text-base shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Assignments
+            과제 목록으로 돌아가기
           </Button>
 
           {currentAssignment.is_resubmittable && (
@@ -938,20 +938,20 @@ const Student = () => {
                   <div>
                     {currentAssignment.max_attempts ? (
                       <p className="font-medium">
-                        You have used <span className="font-bold">{(currentAssignment.submission_count || 0) + 1}</span> of <span className="font-bold">{currentAssignment.max_attempts}</span> attempts.
+                        <span className="font-bold">{currentAssignment.max_attempts}</span>회 중 <span className="font-bold">{(currentAssignment.submission_count || 0) + 1}</span>회 제출했습니다.
                         {(currentAssignment.max_attempts - ((currentAssignment.submission_count || 0) + 1)) > 0 ? (
                           <span className="text-accent ml-1">
-                            You have {currentAssignment.max_attempts - ((currentAssignment.submission_count || 0) + 1)} attempt{currentAssignment.max_attempts - ((currentAssignment.submission_count || 0) + 1) !== 1 ? 's' : ''} remaining.
+                            {currentAssignment.max_attempts - ((currentAssignment.submission_count || 0) + 1)}회 제출 가능합니다.
                           </span>
                         ) : (
                           <span className="text-muted-foreground ml-1">
-                            You have reached the maximum number of attempts.
+                            최대 제출 횟수에 도달했습니다.
                           </span>
                         )}
                       </p>
                     ) : (
                       <p className="font-medium">
-                        This assignment allows unlimited retakes. You can improve your score anytime!
+                        이 과제는 무제한 재제출이 가능합니다. 언제든지 점수를 향상시킬 수 있습니다!
                       </p>
                     )}
                   </div>
@@ -969,10 +969,10 @@ const Student = () => {
     const past = new Date(date);
     const diffInDays = Math.floor((now.getTime() - past.getTime()) / (1000 * 60 * 60 * 24));
     
-    if (diffInDays === 0) return "Today";
-    if (diffInDays === 1) return "Yesterday";
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    if (diffInDays === 0) return "오늘";
+    if (diffInDays === 1) return "어제";
+    if (diffInDays < 7) return `${diffInDays}일 전`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)}주 전`;
     return past.toLocaleDateString();
   };
 
@@ -1010,14 +1010,14 @@ const Student = () => {
             </Button>
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                Student Portal
+                학생 포털
               </h1>
-              <p className="text-muted-foreground mt-1">Welcome back! Ready to learn?</p>
+              <p className="text-muted-foreground mt-1">다시 오신 것을 환영합니다!</p>
             </div>
           </div>
           <Button variant="outline" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
-            Logout
+            로그아웃
           </Button>
         </div>
 
@@ -1025,11 +1025,11 @@ const Student = () => {
           <TabsList className="grid w-full max-w-md grid-cols-2 h-12">
             <TabsTrigger value="assignments" className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4" />
-              <span>Assignments</span>
+              <span>과제</span>
             </TabsTrigger>
             <TabsTrigger value="submissions" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              <span>My Progress</span>
+              <span>나의 현황</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1041,10 +1041,10 @@ const Student = () => {
                     <BookOpen className="h-16 w-16 mx-auto text-muted-foreground opacity-50" />
                     <div>
                       <p className="text-xl font-semibold text-muted-foreground">
-                        No assignments available
+                        배정된 과제가 없습니다
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Check back later for new assignments from your instructors
+                        강사가 과제를 배정하면 여기에 표시됩니다
                       </p>
                     </div>
                   </div>
@@ -1085,7 +1085,7 @@ const Student = () => {
                             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                {assignment.instructor?.full_name || "Unknown Instructor"}
+                                {assignment.instructor?.full_name || "강사 미지정"}
                               </span>
                               {assignment.due_date && (
                                 <span className={cn(
@@ -1094,29 +1094,29 @@ const Student = () => {
                                   isDueSoon(assignment.due_date) && "text-yellow-600 font-semibold"
                                 )}>
                                   <Calendar className="h-3 w-3" />
-                                  Due {new Date(assignment.due_date).toLocaleDateString()}
-                                  {isOverdue(assignment.due_date) && " (Overdue)"}
-                                  {isDueSoon(assignment.due_date) && " (Due Soon)"}
+                                  마감일: {new Date(assignment.due_date).toLocaleDateString()}
+                                  {isOverdue(assignment.due_date) && " (마감됨)"}
+                                  {isDueSoon(assignment.due_date) && " (마감 임박)"}
                                 </span>
                               )}
                               {!isReading && (
                                 <span className="flex items-center gap-1">
                                   <FileText className="h-3 w-3" />
-                                  {assignment.questions.length} questions
+                                  {assignment.questions.length}문제
                                 </span>
                               )}
                               {assignment.file_url && (
-                                <Badge variant="outline" className="flex items-center gap-1">
+                              <Badge variant="outline" className="flex items-center gap-1">
                                   <Paperclip className="h-3 w-3" />
-                                  Attachment
+                                  첨부파일
                                 </Badge>
                               )}
                               {!isReading && assignment.is_resubmittable && assignment.submission && (
                                 <Badge variant="outline" className="flex items-center gap-1 text-foreground">
                                   <Clock className="h-3 w-3" />
                                   {assignment.max_attempts 
-                                    ? `${assignment.submission_count || 0}/${assignment.max_attempts} attempts` 
-                                    : "Unlimited attempts"}
+                                    ? `${assignment.submission_count || 0}/${assignment.max_attempts}회 제출` 
+                                    : "무제한 제출"}
                                 </Badge>
                               )}
                             </div>
@@ -1140,7 +1140,7 @@ const Student = () => {
                               </Badge>
                             ) : (
                               <Badge className="shadow-md">
-                                Not Started
+                                미시작
                               </Badge>
                             )}
                           </div>
@@ -1209,7 +1209,7 @@ const Student = () => {
                             className="w-full hover:scale-[1.02] transition-transform shadow-md"
                           >
                             <BookOpen className="h-4 w-4 mr-2" />
-                            Start Assignment
+                            과제 시작
                           </Button>
                         ) : assignment.is_resubmittable && 
                            (!assignment.max_attempts || (assignment.submission_count || 0) < assignment.max_attempts) ? (
@@ -1219,17 +1219,17 @@ const Student = () => {
                             className="w-full hover:scale-[1.02] transition-transform shadow-md"
                           >
                             <BookOpen className="h-4 w-4 mr-2" />
-                            Retake Assignment
+                            과제 재시작
                             {assignment.max_attempts && (
                               <span className="ml-2 text-xs">
-                                ({(assignment.max_attempts - (assignment.submission_count || 0))} attempts left)
+                                ({(assignment.max_attempts - (assignment.submission_count || 0))}회 남음)
                               </span>
                             )}
                           </Button>
                         ) : assignment.submission && assignment.is_resubmittable && 
                            assignment.max_attempts && (assignment.submission_count || 0) >= assignment.max_attempts ? (
                           <div className="text-sm text-muted-foreground text-center py-2">
-                            Maximum attempts reached
+                            최대 제출 횟수 도달
                           </div>
                         ) : null}
                       </CardContent>
@@ -1245,9 +1245,9 @@ const Student = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5" />
-                  My Submissions
+                  제출 기록
                 </CardTitle>
-                <CardDescription>Track your progress and past submissions</CardDescription>
+                <CardDescription>나의 학습 진도와 제출 기록을 확인하세요</CardDescription>
               </CardHeader>
               <CardContent>
                 {mySubmissions.length === 0 ? (
@@ -1255,10 +1255,10 @@ const Student = () => {
                     <ClipboardList className="h-16 w-16 mx-auto text-muted-foreground opacity-50" />
                     <div>
                       <p className="text-xl font-semibold text-muted-foreground">
-                        No submissions yet
+                        제출 기록이 없습니다
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Complete your first assignment to see your progress here
+                        첫 과제를 완료하면 여기에 기록이 표시됩니다
                       </p>
                     </div>
                   </div>
@@ -1267,10 +1267,10 @@ const Student = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Assignment</TableHead>
-                          <TableHead>Score</TableHead>
-                          <TableHead>Percentage</TableHead>
-                          <TableHead>Submitted</TableHead>
+                          <TableHead>과제</TableHead>
+                          <TableHead>점수</TableHead>
+                          <TableHead>백분율</TableHead>
+                          <TableHead>제출일</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
