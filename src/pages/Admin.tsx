@@ -1138,7 +1138,8 @@ setQuestions([{
                   {(() => {
                     const uniqueStudents = Array.from(
                       new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
-                    ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()));
+                    ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()))
+                     .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
                     return uniqueStudents.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
                         {submissions.length === 0 ? "학생이 없습니다" : "검색 결과가 없습니다"}

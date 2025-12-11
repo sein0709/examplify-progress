@@ -799,7 +799,8 @@ const Instructor = () => {
                     {(() => {
                       const filteredStudents = Array.from(
                         new Map(selectedAssignmentSubmissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
-                      ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()));
+                      ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()))
+                       .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
                       return filteredStudents.length === 0 ? (
                         <p className="text-center text-muted-foreground py-4">검색 결과가 없습니다</p>
                       ) : (
