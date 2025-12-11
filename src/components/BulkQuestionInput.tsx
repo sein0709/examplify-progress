@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,6 +8,7 @@ import { Info, Plus, Eye, EyeOff } from "lucide-react";
 import { MathDisplay } from "./MathDisplay";
 import { parseASC } from "@/lib/ascParser";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ASCHighlightedInput } from "./ASCHighlightedInput";
 
 export interface ParsedQuestion {
   text: string;
@@ -209,11 +209,10 @@ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}`}
 
             <div className="space-y-2">
               <Label>정답 코드 (ASC)</Label>
-              <Input
+              <ASCHighlightedInput
                 placeholder="10: 12345F(답)12F34"
                 value={ascInput}
-                onChange={(e) => setAscInput(e.target.value)}
-                className="font-mono"
+                onChange={setAscInput}
               />
             </div>
           </>
