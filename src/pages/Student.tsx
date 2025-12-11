@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, BookOpen, ClipboardList, Award, Calendar, User, Clock, FileText, TrendingUp, LogOut, Paperclip, ExternalLink, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -463,25 +464,47 @@ const Student = () => {
                 </CardContent>
               </Card>
 
-              {/* Submit Button */}
-              <Button 
-                onClick={handleSubmit} 
-                disabled={submitting || answeredCount < totalQuestions}
-                size="lg"
-                className="w-full hover:scale-[1.02] transition-transform shadow-lg hover:shadow-xl bg-gradient-to-r from-primary to-primary/90"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    Submit Assignment ({answeredCount}/{totalQuestions})
-                    <CheckCircle2 className="ml-2 h-5 w-5" />
-                  </>
-                )}
-              </Button>
+              {/* Submit Button with Confirmation */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    disabled={submitting || answeredCount < totalQuestions}
+                    size="lg"
+                    className="w-full hover:scale-[1.02] transition-transform shadow-lg hover:shadow-xl bg-gradient-to-r from-primary to-primary/90"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        제출 중...
+                      </>
+                    ) : (
+                      <>
+                        과제 제출 ({answeredCount}/{totalQuestions})
+                        <CheckCircle2 className="ml-2 h-5 w-5" />
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>과제를 제출하시겠습니까?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      제출 후에는 답안을 수정할 수 없습니다. {totalQuestions}개 문항 중 {answeredCount}개를 답변하셨습니다.
+                      {currentAssignment.is_resubmittable && currentAssignment.max_attempts && (
+                        <span className="block mt-2 text-primary font-medium">
+                          재제출 가능: {currentAssignment.max_attempts - (currentAssignment.submission_count || 0)}회 남음
+                        </span>
+                      )}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>취소</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleSubmit} disabled={submitting}>
+                      {submitting ? "제출 중..." : "제출하기"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </div>
