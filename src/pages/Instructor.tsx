@@ -943,7 +943,9 @@ const Instructor = () => {
                               </Button>
                             ) : (
                               <Button
-                                variant="link"
+                                variant="outline"
+                                size="sm"
+                                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                                 onClick={() => fetchCompletionStatus(assignment.id)}
                               >
                                 완료 현황 보기
