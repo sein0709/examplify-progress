@@ -73,10 +73,14 @@ interface StudentProgress {
       score: number | null;
       totalQuestions: number;
       submitted: boolean;
+      isNonQuiz: boolean;
+      nonQuizCompleted: boolean;
     };
   };
   averageScore: number;
   completedCount: number;
+  nonQuizCompletedCount: number;
+  nonQuizTotalCount: number;
 }
 
 const Instructor = () => {
@@ -191,6 +195,19 @@ const Instructor = () => {
       
       if (subError) throw subError;
       
+      // Fetch all completions for non-quiz assignments
+      const nonQuizAssignmentIds = myAssignments.filter(a => a.assignment_type === 'reading').map(a => a.id);
+      const { data: completionsData, error: compError } = await supabase
+        .from("assignment_completions")
+        .select("student_id, assignment_id")
+        .in("assignment_id", nonQuizAssignmentIds);
+      
+      if (compError) throw compError;
+      
+      // Build assignment type map
+      const assignmentTypeMap = new Map<string, 'quiz' | 'reading'>();
+      myAssignments.forEach(a => assignmentTypeMap.set(a.id, a.assignment_type));
+      
       // Build student progress map
       const progressMap = new Map<string, StudentProgress>();
       
@@ -206,18 +223,26 @@ const Instructor = () => {
             assignments: {},
             averageScore: 0,
             completedCount: 0,
+            nonQuizCompletedCount: 0,
+            nonQuizTotalCount: 0,
           });
         }
         
         const studentProgress = progressMap.get(sa.student_id)!;
+        const isNonQuiz = assignmentTypeMap.get(sa.assignment_id) === 'reading';
         const submission = submissionsData?.find(
           s => s.student_id === sa.student_id && s.assignment_id === sa.assignment_id
+        );
+        const completion = completionsData?.find(
+          c => c.student_id === sa.student_id && c.assignment_id === sa.assignment_id
         );
         
         studentProgress.assignments[sa.assignment_id] = {
           score: submission?.score ?? null,
           totalQuestions: submission?.total_questions ?? 0,
           submitted: !!submission,
+          isNonQuiz,
+          nonQuizCompleted: !!completion,
         };
       });
       
@@ -225,14 +250,23 @@ const Instructor = () => {
       progressMap.forEach(sp => {
         const scores: number[] = [];
         let completed = 0;
+        let nonQuizCompleted = 0;
+        let nonQuizTotal = 0;
         Object.values(sp.assignments).forEach(a => {
-          if (a.submitted && a.score !== null) {
-            scores.push((a.score / a.totalQuestions) * 100);
-            completed++;
+          if (a.isNonQuiz) {
+            nonQuizTotal++;
+            if (a.nonQuizCompleted) nonQuizCompleted++;
+          } else {
+            if (a.submitted && a.score !== null) {
+              scores.push((a.score / a.totalQuestions) * 100);
+              completed++;
+            }
           }
         });
         sp.averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
         sp.completedCount = completed;
+        sp.nonQuizCompletedCount = nonQuizCompleted;
+        sp.nonQuizTotalCount = nonQuizTotal;
       });
       
       setStudentProgress(Array.from(progressMap.values()));
@@ -1057,14 +1091,14 @@ const Instructor = () => {
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">완료율</CardTitle>
+                    <CardTitle className="text-sm font-medium">퀴즈 완료율</CardTitle>
                     <CheckCircle className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
                       {(() => {
                         const totalAssigned = studentProgress.reduce(
-                          (acc, s) => acc + Object.keys(s.assignments).length,
+                          (acc, s) => acc + Object.values(s.assignments).filter(a => !a.isNonQuiz).length,
                           0
                         );
                         const totalCompleted = studentProgress.reduce(
@@ -1076,7 +1110,31 @@ const Instructor = () => {
                           : "N/A";
                       })()}
                     </div>
-                    <p className="text-xs text-muted-foreground">제출 완료</p>
+                    <p className="text-xs text-muted-foreground">퀴즈 제출 완료</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">비퀴즈 완료율</CardTitle>
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {(() => {
+                        const totalNonQuiz = studentProgress.reduce(
+                          (acc, s) => acc + s.nonQuizTotalCount,
+                          0
+                        );
+                        const completedNonQuiz = studentProgress.reduce(
+                          (acc, s) => acc + s.nonQuizCompletedCount,
+                          0
+                        );
+                        return totalNonQuiz > 0
+                          ? `${Math.round((completedNonQuiz / totalNonQuiz) * 100)}%`
+                          : "N/A";
+                      })()}
+                    </div>
+                    <p className="text-xs text-muted-foreground">비퀴즈 완료</p>
                   </CardContent>
                 </Card>
               </div>
@@ -1132,6 +1190,21 @@ const Instructor = () => {
                                     </TableCell>
                                   );
                                 }
+                                // Non-quiz assignment - show completion status
+                                if (assignmentData.isNonQuiz) {
+                                  return (
+                                    <TableCell key={assignment.id} className="text-center">
+                                      {assignmentData.nonQuizCompleted ? (
+                                        <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                          <Check className="h-3 w-3 mr-1" />완료
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="secondary">미완료</Badge>
+                                      )}
+                                    </TableCell>
+                                  );
+                                }
+                                // Quiz assignment - show score
                                 if (!assignmentData.submitted) {
                                   return (
                                     <TableCell key={assignment.id} className="text-center">
