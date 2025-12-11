@@ -541,7 +541,7 @@ const Instructor = () => {
                           <RadioGroupItem value="reading" id="type-reading" />
                           <Label htmlFor="type-reading" className="flex items-center gap-1 cursor-pointer">
                             <BookOpen className="h-4 w-4" />
-                            읽기 과제
+                            비퀴즈 과제
                           </Label>
                         </div>
                       </RadioGroup>
@@ -895,7 +895,7 @@ const Instructor = () => {
                               {assignment.assignment_type === 'quiz' ? (
                                 <><ClipboardList className="h-3 w-3 mr-1" />퀴즈</>
                               ) : (
-                                <><BookOpen className="h-3 w-3 mr-1" />읽기</>
+                                <><BookOpen className="h-3 w-3 mr-1" />비퀴즈</>
                               )}
                             </Badge>
                           </TableCell>
