@@ -936,7 +936,9 @@ const Instructor = () => {
                           <TableCell>
                             {assignment.assignment_type === 'quiz' ? (
                               <Button
-                                variant="link"
+                                variant="outline"
+                                size="sm"
+                                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
                                 onClick={() => fetchSubmissions(assignment.id)}
                               >
                                 {assignment.submissions[0]?.count || 0} 제출 ({assignment.questions[0]?.count || 0} 문제)
