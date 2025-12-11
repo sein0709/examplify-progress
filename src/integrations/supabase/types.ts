@@ -94,32 +94,38 @@ export type Database = {
       questions: {
         Row: {
           assignment_id: string
-          correct_answer: number
+          correct_answer: number | null
           created_at: string
           explanation: string | null
           id: string
+          model_answer: string | null
           options: Json
           order_number: number
+          question_type: Database["public"]["Enums"]["question_type"]
           text: string
         }
         Insert: {
           assignment_id: string
-          correct_answer: number
+          correct_answer?: number | null
           created_at?: string
           explanation?: string | null
           id?: string
+          model_answer?: string | null
           options: Json
           order_number: number
+          question_type?: Database["public"]["Enums"]["question_type"]
           text: string
         }
         Update: {
           assignment_id?: string
-          correct_answer?: number
+          correct_answer?: number | null
           created_at?: string
           explanation?: string | null
           id?: string
+          model_answer?: string | null
           options?: Json
           order_number?: number
+          question_type?: Database["public"]["Enums"]["question_type"]
           text?: string
         }
         Relationships: [
@@ -134,22 +140,37 @@ export type Database = {
       }
       student_answers: {
         Row: {
+          feedback: string | null
+          graded_at: string | null
+          graded_by: string | null
           id: string
+          is_correct: boolean | null
           question_id: string
-          selected_answer: number
+          selected_answer: number | null
           submission_id: string
+          text_answer: string | null
         }
         Insert: {
+          feedback?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
           id?: string
+          is_correct?: boolean | null
           question_id: string
-          selected_answer: number
+          selected_answer?: number | null
           submission_id: string
+          text_answer?: string | null
         }
         Update: {
+          feedback?: string | null
+          graded_at?: string | null
+          graded_by?: string | null
           id?: string
+          is_correct?: boolean | null
           question_id?: string
-          selected_answer?: number
+          selected_answer?: number | null
           submission_id?: string
+          text_answer?: string | null
         }
         Relationships: [
           {
@@ -288,6 +309,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "instructor" | "student"
+      question_type: "multiple_choice" | "free_response"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -416,6 +438,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "instructor", "student"],
+      question_type: ["multiple_choice", "free_response"],
     },
   },
 } as const
