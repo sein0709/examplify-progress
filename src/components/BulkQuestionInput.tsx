@@ -5,12 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, Plus, Eye, EyeOff } from "lucide-react";
+import { MathDisplay } from "./MathDisplay";
 
-interface ParsedQuestion {
+export interface ParsedQuestion {
   text: string;
   options: string[];
-  correctAnswer: number;
+  correctAnswer: number | null;
   explanation: string;
+  questionType: 'multiple_choice' | 'free_response';
+  modelAnswer: string;
 }
 
 interface BulkQuestionInputProps {
@@ -33,20 +36,47 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
       const lines = block.trim().split("\n").filter(line => line.trim());
       if (lines.length < 2) continue;
 
-      const questionText = lines[0].trim();
-      const correctAnswerLine = lines[1].trim();
-      const correctAnswer = parseInt(correctAnswerLine) - 1; // Convert 1-5 to 0-4
+      const firstLine = lines[0].trim();
+      
+      // Check if it's a free response question
+      const isFreeResponse = firstLine.startsWith("[서술형]") || firstLine.startsWith("[FR]");
+      
+      if (isFreeResponse) {
+        // Free response question format:
+        // [서술형] Question text
+        // Model answer (can include LaTeX)
+        const questionText = firstLine.replace(/^\[서술형\]|\[FR\]/, "").trim();
+        const modelAnswer = lines.slice(1).join("\n").trim();
 
-      if (isNaN(correctAnswer) || correctAnswer < 0 || correctAnswer > 4) {
-        throw new Error(`문제 "${questionText}"의 정답 번호 "${correctAnswerLine}"이(가) 올바르지 않습니다. 1-5 사이여야 합니다.`);
+        questions.push({
+          text: questionText,
+          options: [...DEFAULT_OPTIONS],
+          correctAnswer: null,
+          explanation: "",
+          questionType: 'free_response',
+          modelAnswer,
+        });
+      } else {
+        // Multiple choice question format:
+        // Question text
+        // Correct answer number (1-5)
+        const questionText = firstLine;
+        const correctAnswerLine = lines[1].trim();
+        const correctAnswer = parseInt(correctAnswerLine) - 1; // Convert 1-5 to 0-4
+
+        if (isNaN(correctAnswer) || correctAnswer < 0 || correctAnswer > 4) {
+          throw new Error(`문제 "${questionText}"의 정답 번호 "${correctAnswerLine}"이(가) 올바르지 않습니다. 1-5 사이여야 합니다.`);
+        }
+
+        questions.push({
+          text: questionText,
+          options: [...DEFAULT_OPTIONS],
+          correctAnswer,
+          explanation: "",
+          questionType: 'multiple_choice',
+          modelAnswer: "",
+        });
       }
-
-      questions.push({
-        text: questionText,
-        options: [...DEFAULT_OPTIONS],
-        correctAnswer,
-        explanation: "",
-      });
     }
 
     return questions;
@@ -84,16 +114,19 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
           문제 일괄 추가
         </CardTitle>
         <CardDescription>
-          간단한 텍스트 형식을 사용하여 여러 문제를 한 번에 빠르게 추가하세요
+          객관식 및 서술형 문제를 한 번에 추가하세요
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 flex-1 flex flex-col">
         <Alert className="bg-muted/50">
           <Info className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            <strong>형식:</strong> 각 문제는 첫 번째 줄에 문제 텍스트가 있어야 하고, 
-            두 번째 줄에 정답 번호(1-5)가 있어야 합니다. 
-            문제 사이에 빈 줄로 구분하세요. 선택지는 기본적으로 1-5로 번호가 매겨집니다.
+          <AlertDescription className="text-sm space-y-2">
+            <div>
+              <strong>객관식:</strong> 첫 줄에 문제, 둘째 줄에 정답 번호(1-5)
+            </div>
+            <div>
+              <strong>서술형:</strong> <code>[서술형]</code> 접두사와 문제, 둘째 줄에 모범답안 (LaTeX 지원)
+            </div>
           </AlertDescription>
         </Alert>
 
@@ -103,11 +136,14 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
             placeholder={`프랑스의 수도는 무엇인가요?
 3
 
-2+2는 얼마인가요?
-2
+[서술형] x²의 미분값을 구하시오.
+2x
 
 가장 큰 행성은 무엇인가요?
-4`}
+4
+
+[서술형] 이차방정식의 근의 공식을 작성하시오.
+x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}`}
             value={bulkText}
             onChange={(e) => setBulkText(e.target.value)}
             className="font-mono text-sm flex-1 min-h-[200px]"
@@ -144,10 +180,25 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {parsedQuestions.map((q, i) => (
                 <div key={i} className="p-3 bg-background rounded border text-sm">
-                  <div className="font-medium">Q{i + 1}: {q.text}</div>
-                  <div className="text-muted-foreground mt-1">
-                    정답: 선택지 {q.correctAnswer + 1}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      q.questionType === 'free_response' 
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
+                        : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                    }`}>
+                      {q.questionType === 'free_response' ? '서술형' : '객관식'}
+                    </span>
                   </div>
+                  <div className="font-medium">Q{i + 1}: {q.text}</div>
+                  {q.questionType === 'multiple_choice' ? (
+                    <div className="text-muted-foreground mt-1">
+                      정답: 선택지 {(q.correctAnswer ?? 0) + 1}
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground mt-1">
+                      모범답안: <MathDisplay latex={q.modelAnswer} />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

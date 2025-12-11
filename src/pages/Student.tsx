@@ -12,16 +12,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, BookOpen, ClipboardList, Award, Calendar, User, Clock, FileText, TrendingUp, LogOut, Paperclip, ExternalLink, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, BookOpen, ClipboardList, Award, Calendar, User, Clock, FileText, TrendingUp, LogOut, Paperclip, ExternalLink, Image as ImageIcon, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MathInput } from "@/components/MathInput";
+import { MathDisplay } from "@/components/MathDisplay";
 
 interface Question {
   id: string;
   text: string;
   options: string[];
-  correct_answer: number;
+  correct_answer: number | null;
   explanation: string | null;
   order_number: number;
+  question_type: 'multiple_choice' | 'free_response';
+  model_answer: string | null;
 }
 
 interface Assignment {
@@ -63,6 +67,7 @@ const Student = () => {
   const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: number }>({});
+  const [textAnswers, setTextAnswers] = useState<{ [key: number]: string }>({});
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -121,6 +126,8 @@ const Student = () => {
             correct_answer: q.correct_answer,
             explanation: q.explanation,
             order_number: q.order_number,
+            question_type: q.question_type || 'multiple_choice',
+            model_answer: q.model_answer,
           })).sort((a: Question, b: Question) => a.order_number - b.order_number);
 
           // Count submissions for current student
@@ -169,11 +176,16 @@ const Student = () => {
     setCurrentAssignment(assignment);
     setCurrentQuestionIndex(0);
     setSelectedAnswers({});
+    setTextAnswers({});
     setShowResults(false);
   };
 
   const handleAnswerSelect = (questionIndex: number, answer: number) => {
     setSelectedAnswers({ ...selectedAnswers, [questionIndex]: answer });
+  };
+
+  const handleTextAnswerChange = (questionIndex: number, answer: string) => {
+    setTextAnswers({ ...textAnswers, [questionIndex]: answer });
   };
 
   const handleNext = () => {
@@ -200,11 +212,16 @@ const Student = () => {
     }
 
     const allQuestionsAnswered = currentAssignment.questions.every(
-      (_, index) => selectedAnswers[index] !== undefined
+      (question, index) => {
+        if (question.question_type === 'free_response') {
+          return textAnswers[index] && textAnswers[index].trim() !== '';
+        }
+        return selectedAnswers[index] !== undefined;
+      }
     );
 
     if (!allQuestionsAnswered) {
-      toast.error("Please answer all questions before submitting");
+      toast.error("모든 문제에 답을 입력해주세요");
       return;
     }
 
@@ -213,7 +230,9 @@ const Student = () => {
       // Prepare student answers for the edge function
       const studentAnswers = currentAssignment.questions.map((question, index) => ({
         question_id: question.id,
-        selected_answer: selectedAnswers[index],
+        selected_answer: question.question_type === 'multiple_choice' ? selectedAnswers[index] : null,
+        text_answer: question.question_type === 'free_response' ? textAnswers[index] : null,
+        question_type: question.question_type,
       }));
 
       // Calculate score on the server
@@ -264,6 +283,7 @@ const Student = () => {
         submission_id: submission.id,
         question_id: answer.question_id,
         selected_answer: answer.selected_answer,
+        text_answer: answer.text_answer,
       }));
 
       const { error: answersError } = await supabase
@@ -303,14 +323,25 @@ const Student = () => {
   const calculateScore = () => {
     // Score calculation now happens server-side for security
     // This function is kept for displaying results after submission
+    // Only counts multiple choice questions
     if (!currentAssignment) return 0;
     let score = 0;
     currentAssignment.questions.forEach((question, index) => {
-      if (selectedAnswers[index] === question.correct_answer) {
+      if (question.question_type === 'multiple_choice' && selectedAnswers[index] === question.correct_answer) {
         score++;
       }
     });
     return score;
+  };
+
+  const getMCQuestionCount = () => {
+    if (!currentAssignment) return 0;
+    return currentAssignment.questions.filter(q => q.question_type === 'multiple_choice').length;
+  };
+
+  const getFRQuestionCount = () => {
+    if (!currentAssignment) return 0;
+    return currentAssignment.questions.filter(q => q.question_type === 'free_response').length;
   };
 
   if (loading) {
@@ -325,7 +356,11 @@ const Student = () => {
   }
 
   if (currentAssignment && !showResults) {
-    const answeredCount = Object.keys(selectedAnswers).length;
+    const multipleChoiceCount = currentAssignment.questions.filter(q => q.question_type === 'multiple_choice').length;
+    const freeResponseCount = currentAssignment.questions.filter(q => q.question_type === 'free_response').length;
+    const answeredMC = Object.keys(selectedAnswers).length;
+    const answeredFR = Object.values(textAnswers).filter(a => a && a.trim() !== '').length;
+    const answeredCount = answeredMC + answeredFR;
     const totalQuestions = currentAssignment.questions.length;
     const progress = (answeredCount / totalQuestions) * 100;
 
@@ -419,47 +454,85 @@ const Student = () => {
                     </div>
 
                     {/* Question rows */}
-                    {currentAssignment.questions.map((question, qIndex) => (
-                      <div 
-                        key={question.id} 
-                        className={cn(
-                          "flex items-center gap-2 py-2 px-1 rounded-lg transition-colors",
-                          selectedAnswers[qIndex] !== undefined && "bg-accent/20"
-                        )}
-                      >
-                        <div className="w-16 text-center">
-                          <span className={cn(
-                            "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors",
-                            selectedAnswers[qIndex] !== undefined 
-                              ? "bg-primary text-primary-foreground" 
-                              : "bg-muted text-muted-foreground"
-                          )}>
-                            {qIndex + 1}
-                          </span>
+                    {currentAssignment.questions.map((question, qIndex) => {
+                      const isAnswered = question.question_type === 'multiple_choice' 
+                        ? selectedAnswers[qIndex] !== undefined
+                        : textAnswers[qIndex] && textAnswers[qIndex].trim() !== '';
+                      
+                      return (
+                        <div 
+                          key={question.id} 
+                          className={cn(
+                            "py-3 px-1 rounded-lg transition-colors border-b",
+                            isAnswered && "bg-accent/20"
+                          )}
+                        >
+                          {question.question_type === 'multiple_choice' ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 text-center">
+                                <span className={cn(
+                                  "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors",
+                                  isAnswered 
+                                    ? "bg-primary text-primary-foreground" 
+                                    : "bg-muted text-muted-foreground"
+                                )}>
+                                  {qIndex + 1}
+                                </span>
+                              </div>
+                              <div className="flex-1 flex justify-center gap-4">
+                                {[0, 1, 2, 3, 4].map((optionIndex) => {
+                                  const isSelected = selectedAnswers[qIndex] === optionIndex;
+                                  return (
+                                    <button
+                                      key={optionIndex}
+                                      type="button"
+                                      onClick={() => handleAnswerSelect(qIndex, optionIndex)}
+                                      className={cn(
+                                        "w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all duration-200",
+                                        "hover:scale-110 hover:shadow-md",
+                                        isSelected
+                                          ? "bg-[#292929] border-[#292929] text-white shadow-lg scale-105 animate-scale-in ring-2 ring-[#292929]/30"
+                                          : "border-border bg-background hover:border-primary/50 hover:bg-accent/30"
+                                      )}
+                                    >
+                                      {optionIndex + 1}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 text-center">
+                                  <span className={cn(
+                                    "inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors",
+                                    isAnswered 
+                                      ? "bg-purple-600 text-white" 
+                                      : "bg-muted text-muted-foreground"
+                                  )}>
+                                    {qIndex + 1}
+                                  </span>
+                                </div>
+                                <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                                  <PenLine className="h-3 w-3 mr-1" />
+                                  서술형
+                                </Badge>
+                                <span className="text-sm text-muted-foreground flex-1">{question.text}</span>
+                              </div>
+                              <div className="pl-16">
+                                <MathInput
+                                  value={textAnswers[qIndex] || ''}
+                                  onChange={(value) => handleTextAnswerChange(qIndex, value)}
+                                  placeholder="답안을 입력하세요 (수학 기호 사용 가능)"
+                                  className="max-w-xl"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex-1 flex justify-center gap-4">
-                          {[0, 1, 2, 3, 4].map((optionIndex) => {
-                            const isSelected = selectedAnswers[qIndex] === optionIndex;
-                            return (
-                              <button
-                                key={optionIndex}
-                                type="button"
-                                onClick={() => handleAnswerSelect(qIndex, optionIndex)}
-                                className={cn(
-                                  "w-10 h-10 rounded-full border-2 flex items-center justify-center text-sm font-medium transition-all duration-200",
-                                  "hover:scale-110 hover:shadow-md",
-                                  isSelected
-                                    ? "bg-[#292929] border-[#292929] text-white shadow-lg scale-105 animate-scale-in ring-2 ring-[#292929]/30"
-                                    : "border-border bg-background hover:border-primary/50 hover:bg-accent/30"
-                                )}
-                              >
-                                {optionIndex + 1}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -592,17 +665,27 @@ const Student = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {currentAssignment.questions.map((question, index) => {
+                const isFreeResponse = question.question_type === 'free_response';
                 const selectedAnswer = selectedAnswers[index];
-                const isCorrect = selectedAnswer === question.correct_answer;
+                const textAnswer = textAnswers[index];
+                const isCorrect = !isFreeResponse && selectedAnswer === question.correct_answer;
 
                 return (
                   <Card key={question.id} className={cn(
                     "border-2 transition-all duration-300 hover:shadow-lg",
-                    isCorrect ? "border-green-500/50 bg-green-500/5" : "border-destructive/50 bg-destructive/5"
+                    isFreeResponse 
+                      ? "border-purple-500/50 bg-purple-500/5" 
+                      : isCorrect 
+                        ? "border-green-500/50 bg-green-500/5" 
+                        : "border-destructive/50 bg-destructive/5"
                   )}>
                     <CardHeader>
                       <div className="flex items-start gap-3">
-                        {isCorrect ? (
+                        {isFreeResponse ? (
+                          <div className="h-6 w-6 rounded-full bg-purple-500 flex items-center justify-center">
+                            <PenLine className="h-3 w-3 text-white" />
+                          </div>
+                        ) : isCorrect ? (
                           <div className="relative">
                             <div className="absolute inset-0 blur-lg bg-green-500/30" />
                             <CheckCircle2 className="h-6 w-6 text-green-500 relative" />
@@ -614,55 +697,80 @@ const Student = () => {
                         )}
                         <div className="flex-1">
                           <CardTitle className="text-lg flex items-center gap-2">
-                            Question {index + 1}
-                            {isCorrect && <span className="text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">Correct</span>}
+                            문제 {index + 1}
+                            {isFreeResponse ? (
+                              <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                                서술형
+                              </Badge>
+                            ) : isCorrect ? (
+                              <span className="text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">정답</span>
+                            ) : null}
                           </CardTitle>
                           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{question.text}</p>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className="space-y-2">
-                        {question.options.map((option, optIndex) => {
-                          const isSelected = selectedAnswer === optIndex;
-                          const isCorrectOption = optIndex === question.correct_answer;
-
-                          return (
-                            <div
-                              key={optIndex}
-                              className={cn(
-                                "p-4 rounded-lg border-2 transition-all duration-200",
-                                isCorrectOption && "bg-green-500/15 border-green-500 shadow-sm",
-                                isSelected && !isCorrect && "bg-destructive/15 border-destructive"
-                              )}
-                            >
-                              <div className="flex items-center gap-3">
-                                {isCorrectOption && (
-                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                )}
-                                {isSelected && !isCorrect && (
-                                  <div className="h-5 w-5 rounded-full bg-destructive flex items-center justify-center">
-                                    <span className="text-xs text-destructive-foreground font-bold">✕</span>
-                                  </div>
-                                )}
-                                <span className={cn(
-                                  "text-base",
-                                  isCorrectOption && "font-semibold text-green-700 dark:text-green-300",
-                                  isSelected && !isCorrect && "line-through opacity-60"
-                                )}>
-                                  {option}
-                                </span>
-                              </div>
+                      {isFreeResponse ? (
+                        <div className="space-y-4">
+                          <div className="p-4 bg-muted/50 rounded-lg border">
+                            <p className="text-sm font-semibold mb-2">내 답안:</p>
+                            {textAnswer ? (
+                              <MathDisplay latex={textAnswer} block />
+                            ) : (
+                              <span className="text-muted-foreground italic">답안 없음</span>
+                            )}
+                          </div>
+                          {question.model_answer && (
+                            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+                              <p className="text-sm font-semibold mb-2 text-green-700 dark:text-green-300">모범답안:</p>
+                              <MathDisplay latex={question.model_answer} block />
                             </div>
-                          );
-                        })}
-                      </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {question.options.map((option, optIndex) => {
+                            const isSelected = selectedAnswer === optIndex;
+                            const isCorrectOption = optIndex === question.correct_answer;
+
+                            return (
+                              <div
+                                key={optIndex}
+                                className={cn(
+                                  "p-4 rounded-lg border-2 transition-all duration-200",
+                                  isCorrectOption && "bg-green-500/15 border-green-500 shadow-sm",
+                                  isSelected && !isCorrect && "bg-destructive/15 border-destructive"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  {isCorrectOption && (
+                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                  )}
+                                  {isSelected && !isCorrect && (
+                                    <div className="h-5 w-5 rounded-full bg-destructive flex items-center justify-center">
+                                      <span className="text-xs text-destructive-foreground font-bold">✕</span>
+                                    </div>
+                                  )}
+                                  <span className={cn(
+                                    "text-base",
+                                    isCorrectOption && "font-semibold text-green-700 dark:text-green-300",
+                                    isSelected && !isCorrect && "line-through opacity-60"
+                                  )}>
+                                    {option}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
                       {question.explanation && (
                         <div className="mt-4 p-4 bg-gradient-to-r from-muted to-muted/50 rounded-lg border-l-4 border-primary">
                           <p className="text-sm font-semibold mb-2 flex items-center gap-2">
                             <BookOpen className="h-4 w-4" />
-                            Explanation:
+                            설명:
                           </p>
                           <p className="text-sm text-muted-foreground leading-relaxed">{question.explanation}</p>
                         </div>
