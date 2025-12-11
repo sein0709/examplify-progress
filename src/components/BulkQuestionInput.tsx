@@ -213,7 +213,9 @@ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}`}
                 placeholder="10: 12345F(답)12F34"
                 value={ascInput}
                 onChange={setAscInput}
+                onEnter={handleASCPreview}
               />
+              <p className="text-xs text-muted-foreground">Enter 키를 눌러 미리보기</p>
             </div>
           </>
         )}
@@ -225,15 +227,17 @@ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}`}
         )}
 
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={inputMode === "traditional" ? handlePreview : handleASCPreview}
-            disabled={inputMode === "traditional" ? !bulkText.trim() : !ascInput.trim()}
-          >
-            {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-            {showPreview ? "미리보기 숨기기" : "문제 미리보기"}
-          </Button>
+          {inputMode === "traditional" && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePreview}
+              disabled={!bulkText.trim()}
+            >
+              {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {showPreview ? "미리보기 숨기기" : "문제 미리보기"}
+            </Button>
+          )}
           {showPreview && parsedQuestions.length > 0 && (
             <Button type="button" onClick={handleAdd}>
               <Plus className="h-4 w-4 mr-2" />
