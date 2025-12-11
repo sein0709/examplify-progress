@@ -28,6 +28,7 @@ import { MathDisplay } from "@/components/MathDisplay";
 import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
 import { AssignmentAnalyticsCard } from "@/components/AssignmentAnalyticsCard";
+import { StudentScoreDialog } from "@/components/StudentScoreDialog";
 interface UserProfile {
   id: string;
   full_name: string;
@@ -1138,7 +1139,10 @@ setQuestions([{
                       <TableBody>
                         {submissions.map(submission => <TableRow key={submission.id}>
                             <TableCell className="font-medium">
-                              {submission.student.full_name}
+                              <StudentScoreDialog
+                                studentId={submission.student_id}
+                                studentName={submission.student.full_name}
+                              />
                             </TableCell>
                             <TableCell>{submission.assignment.title}</TableCell>
                             <TableCell>
