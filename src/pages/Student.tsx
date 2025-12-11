@@ -38,6 +38,7 @@ interface Assignment {
   file_type: string | null;
   is_resubmittable: boolean;
   max_attempts: number | null;
+  assignment_type: 'quiz' | 'reading';
   instructor: {
     full_name: string;
   };
@@ -48,6 +49,10 @@ interface Assignment {
     total_questions: number;
   };
   submission_count?: number;
+  completion?: {
+    completed_at: string;
+    notes: string | null;
+  };
 }
 
 interface Submission {
@@ -81,6 +86,7 @@ const Student = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submissionAnswers, setSubmissionAnswers] = useState<StudentAnswerResult[]>([]);
+  const [togglingCompletion, setTogglingCompletion] = useState(false);
 
   useEffect(() => {
     fetchAssignments();
@@ -120,25 +126,40 @@ const Student = () => {
 
       if (error) throw error;
 
+      // Fetch completions for reading assignments
+      const { data: completionsData } = await supabase
+        .from("assignment_completions")
+        .select("assignment_id, completed_at, notes")
+        .eq("student_id", user.id);
+      
+      const completionsMap: {[key: string]: {completed_at: string, notes: string | null}} = {};
+      (completionsData || []).forEach(c => {
+        completionsMap[c.assignment_id] = { completed_at: c.completed_at, notes: c.notes };
+      });
+
       // Fetch questions separately using secure function that hides answers from students
       const formattedAssignments = await Promise.all(
         (data || []).map(async (assignment: any) => {
-          const { data: questionsData } = await supabase.rpc(
-            "get_assignment_questions",
-            { _assignment_id: assignment.id, _include_answers: false }
-          );
+          // Only fetch questions for quiz type
+          let questions: Question[] = [];
+          if (assignment.assignment_type === 'quiz') {
+            const { data: questionsData } = await supabase.rpc(
+              "get_assignment_questions",
+              { _assignment_id: assignment.id, _include_answers: false }
+            );
 
-          // Transform RPC data to match Question interface
-          const questions = (questionsData || []).map((q: any) => ({
-            id: q.id,
-            text: q.text,
-            options: Array.isArray(q.options) ? q.options : JSON.parse(q.options as string),
-            correct_answer: q.correct_answer,
-            explanation: q.explanation,
-            order_number: q.order_number,
-            question_type: q.question_type || 'multiple_choice',
-            model_answer: q.model_answer,
-          })).sort((a: Question, b: Question) => a.order_number - b.order_number);
+            // Transform RPC data to match Question interface
+            questions = (questionsData || []).map((q: any) => ({
+              id: q.id,
+              text: q.text,
+              options: Array.isArray(q.options) ? q.options : JSON.parse(q.options as string),
+              correct_answer: q.correct_answer,
+              explanation: q.explanation,
+              order_number: q.order_number,
+              question_type: q.question_type || 'multiple_choice',
+              model_answer: q.model_answer,
+            })).sort((a: Question, b: Question) => a.order_number - b.order_number);
+          }
 
           // Count submissions for current student
           const studentSubmissions = assignment.submissions.filter(
@@ -148,9 +169,11 @@ const Student = () => {
 
           return {
             ...assignment,
+            assignment_type: assignment.assignment_type as 'quiz' | 'reading',
             questions,
             submission: studentSubmissions[studentSubmissions.length - 1], // Most recent submission
             submission_count: submissionCount,
+            completion: completionsMap[assignment.id] || null,
           };
         })
       );
@@ -179,6 +202,40 @@ const Student = () => {
       setMySubmissions(data || []);
     } catch (error: any) {
       toast.error("Failed to fetch submissions: " + error.message);
+    }
+  };
+
+  const toggleCompletion = async (assignment: Assignment) => {
+    if (!user) return;
+    setTogglingCompletion(true);
+    try {
+      if (assignment.completion) {
+        // Remove completion
+        const { error } = await supabase
+          .from("assignment_completions")
+          .delete()
+          .eq("assignment_id", assignment.id)
+          .eq("student_id", user.id);
+        
+        if (error) throw error;
+        toast.success("완료 표시가 취소되었습니다");
+      } else {
+        // Add completion
+        const { error } = await supabase
+          .from("assignment_completions")
+          .insert({
+            assignment_id: assignment.id,
+            student_id: user.id,
+          });
+        
+        if (error) throw error;
+        toast.success("완료 표시되었습니다!");
+      }
+      fetchAssignments();
+    } catch (error: any) {
+      toast.error("완료 상태 변경 실패: " + error.message);
+    } finally {
+      setTogglingCompletion(false);
     }
   };
 
@@ -969,6 +1026,7 @@ const Student = () => {
             ) : (
               <div className="grid gap-4">
                 {assignments.map((assignment, index) => {
+                  const isReading = assignment.assignment_type === 'reading';
                   const percentage = assignment.submission 
                     ? Math.round((assignment.submission.score / assignment.submission.total_questions) * 100)
                     : 0;
@@ -977,15 +1035,25 @@ const Student = () => {
                   return (
                     <Card 
                       key={assignment.id} 
-                      className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.01] border-2 hover:border-primary/50 animate-fade-in"
+                      className={cn(
+                        "shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.01] border-2 hover:border-primary/50 animate-fade-in",
+                        isReading && "border-l-4 border-l-accent"
+                      )}
                       style={{ animationDelay: `${index * 0.1}s` }}
                     >
                       <CardHeader>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-2">
                             <CardTitle className="text-xl flex items-center gap-2">
-                              <BookOpen className="h-5 w-5" color="#474747" />
+                              {isReading ? (
+                                <BookOpen className="h-5 w-5 text-accent" />
+                              ) : (
+                                <ClipboardList className="h-5 w-5" color="#474747" />
+                              )}
                               {assignment.title}
+                              <Badge variant={isReading ? 'secondary' : 'default'} className="ml-2">
+                                {isReading ? '읽기 과제' : '퀴즈'}
+                              </Badge>
                             </CardTitle>
                             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
@@ -1004,17 +1072,19 @@ const Student = () => {
                                   {isDueSoon(assignment.due_date) && " (Due Soon)"}
                                 </span>
                               )}
-                              <span className="flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                {assignment.questions.length} questions
-                              </span>
+                              {!isReading && (
+                                <span className="flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  {assignment.questions.length} questions
+                                </span>
+                              )}
                               {assignment.file_url && (
                                 <Badge variant="outline" className="flex items-center gap-1">
                                   <Paperclip className="h-3 w-3" />
                                   Attachment
                                 </Badge>
                               )}
-                              {assignment.is_resubmittable && assignment.submission && (
+                              {!isReading && assignment.is_resubmittable && assignment.submission && (
                                 <Badge variant="outline" className="flex items-center gap-1 text-foreground">
                                   <Clock className="h-3 w-3" />
                                   {assignment.max_attempts 
@@ -1025,7 +1095,18 @@ const Student = () => {
                             </div>
                           </div>
                           <div>
-                            {assignment.submission ? (
+                            {isReading ? (
+                              assignment.completion ? (
+                                <Badge className="shadow-md bg-green-500 text-white">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                                  완료됨
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="shadow-md">
+                                  미완료
+                                </Badge>
+                              )
+                            ) : assignment.submission ? (
                               <Badge variant="secondary" className={cn("shadow-md", scoreColor, "text-white")}>
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                                 {percentage}% ({assignment.submission.score}/{assignment.submission.total_questions})
@@ -1039,7 +1120,48 @@ const Student = () => {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        {!assignment.submission ? (
+                        {isReading ? (
+                          <div className="space-y-4">
+                            {assignment.description && (
+                              <p className="text-muted-foreground">{assignment.description}</p>
+                            )}
+                            {assignment.file_url && (
+                              <div className="p-4 border rounded-lg bg-muted/30">
+                                <FilePreview 
+                                  fileUrl={assignment.file_url}
+                                  fileType={assignment.file_type}
+                                  maxHeight="400px"
+                                  showDownloadButton
+                                />
+                              </div>
+                            )}
+                            <Button 
+                              onClick={() => toggleCompletion(assignment)}
+                              disabled={togglingCompletion}
+                              variant={assignment.completion ? "outline" : "default"}
+                              className="w-full hover:scale-[1.02] transition-transform shadow-md"
+                            >
+                              {togglingCompletion ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : assignment.completion ? (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  완료 취소
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                                  완료 표시
+                                </>
+                              )}
+                            </Button>
+                            {assignment.completion && (
+                              <p className="text-xs text-muted-foreground text-center">
+                                완료일: {new Date(assignment.completion.completed_at).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        ) : !assignment.submission ? (
                           <Button 
                             onClick={() => startAssignment(assignment)}
                             className="w-full hover:scale-[1.02] transition-transform shadow-md"

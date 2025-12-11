@@ -22,7 +22,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle, ClipboardList, BookOpen, Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { BulkQuestionInput, ParsedQuestion } from "@/components/BulkQuestionInput";
@@ -48,6 +48,7 @@ interface Assignment {
   description: string | null;
   due_date: string | null;
   created_at: string;
+  assignment_type: 'quiz' | 'reading';
   questions: { count: number }[];
   submissions: { count: number }[];
 }
@@ -98,6 +99,8 @@ const Instructor = () => {
   const [studentProgress, setStudentProgress] = useState<StudentProgress[]>([]);
   const [progressLoading, setProgressLoading] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [assignmentType, setAssignmentType] = useState<'quiz' | 'reading'>('quiz');
+  const [completionStatus, setCompletionStatus] = useState<{[studentId: string]: {completed_at: string | null, notes: string | null}}>({});
 
   useEffect(() => {
     fetchMyAssignments();
@@ -124,7 +127,7 @@ const Instructor = () => {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setMyAssignments(data || []);
+      setMyAssignments((data || []).map(a => ({...a, assignment_type: a.assignment_type as 'quiz' | 'reading'})));
     } catch (error: any) {
       toast.error("과제 목록을 불러오는데 실패했습니다: " + error.message);
     } finally {
@@ -240,6 +243,25 @@ const Instructor = () => {
     }
   };
 
+  const fetchCompletionStatus = async (assignmentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("assignment_completions")
+        .select("student_id, completed_at, notes")
+        .eq("assignment_id", assignmentId);
+      
+      if (error) throw error;
+      
+      const statusMap: {[studentId: string]: {completed_at: string | null, notes: string | null}} = {};
+      (data || []).forEach(c => {
+        statusMap[c.student_id] = { completed_at: c.completed_at, notes: c.notes };
+      });
+      setCompletionStatus(statusMap);
+    } catch (error: any) {
+      toast.error("완료 현황을 불러오는데 실패했습니다: " + error.message);
+    }
+  };
+
   const addQuestion = (type: 'multiple_choice' | 'free_response' = 'multiple_choice') => {
     setQuestions([...questions, { 
       text: "", 
@@ -340,16 +362,19 @@ const Instructor = () => {
       return;
     }
 
-    for (let i = 0; i < questions.length; i++) {
-      if (!questions[i].text.trim()) {
-        toast.error(`문제 ${i + 1}의 텍스트가 필요합니다`);
-        return;
-      }
-      if (questions[i].questionType === 'multiple_choice') {
-        for (let j = 0; j < 4; j++) {
-          if (!questions[i].options[j].trim()) {
-            toast.error(`문제 ${i + 1}, 선택지 ${j + 1}이(가) 필요합니다`);
-            return;
+    // Only validate questions for quiz type
+    if (assignmentType === 'quiz') {
+      for (let i = 0; i < questions.length; i++) {
+        if (!questions[i].text.trim()) {
+          toast.error(`문제 ${i + 1}의 텍스트가 필요합니다`);
+          return;
+        }
+        if (questions[i].questionType === 'multiple_choice') {
+          for (let j = 0; j < 4; j++) {
+            if (!questions[i].options[j].trim()) {
+              toast.error(`문제 ${i + 1}, 선택지 ${j + 1}이(가) 필요합니다`);
+              return;
+            }
           }
         }
       }
@@ -399,28 +424,32 @@ const Instructor = () => {
           file_type: fileType,
           is_resubmittable: isResubmittable,
           max_attempts: isResubmittable ? maxAttempts : null,
+          assignment_type: assignmentType,
         })
         .select()
         .single();
 
       if (assignmentError) throw assignmentError;
 
-      const questionsToInsert = questions.map((q, index) => ({
-        assignment_id: assignment.id,
-        text: q.text,
-        options: q.options,
-        correct_answer: q.questionType === 'multiple_choice' ? q.correctAnswer : null,
-        explanation: q.explanation || null,
-        order_number: index,
-        question_type: q.questionType,
-        model_answer: q.questionType === 'free_response' ? q.modelAnswer : null,
-      }));
+      // Only create questions for quiz type
+      if (assignmentType === 'quiz') {
+        const questionsToInsert = questions.map((q, index) => ({
+          assignment_id: assignment.id,
+          text: q.text,
+          options: q.options,
+          correct_answer: q.questionType === 'multiple_choice' ? q.correctAnswer : null,
+          explanation: q.explanation || null,
+          order_number: index,
+          question_type: q.questionType,
+          model_answer: q.questionType === 'free_response' ? q.modelAnswer : null,
+        }));
 
-      const { error: questionsError } = await supabase
-        .from("questions")
-        .insert(questionsToInsert);
+        const { error: questionsError } = await supabase
+          .from("questions")
+          .insert(questionsToInsert);
 
-      if (questionsError) throw questionsError;
+        if (questionsError) throw questionsError;
+      }
 
       // Insert student assignments if any students selected
       if (selectedStudentIds.length > 0) {
@@ -440,6 +469,7 @@ const Instructor = () => {
       setMaxAttempts(1);
       setUploadedFile(null);
       setSelectedStudentIds([]);
+      setAssignmentType('quiz');
       setQuestions([{ text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "", questionType: 'multiple_choice', modelAnswer: "" }]);
       fetchMyAssignments();
     } catch (error: any) {
@@ -493,6 +523,30 @@ const Instructor = () => {
                     <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label>과제 유형</Label>
+                      <RadioGroup
+                        value={assignmentType}
+                        onValueChange={(value) => setAssignmentType(value as 'quiz' | 'reading')}
+                        className="flex gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="quiz" id="type-quiz" />
+                          <Label htmlFor="type-quiz" className="flex items-center gap-1 cursor-pointer">
+                            <ClipboardList className="h-4 w-4" />
+                            퀴즈
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="reading" id="type-reading" />
+                          <Label htmlFor="type-reading" className="flex items-center gap-1 cursor-pointer">
+                            <BookOpen className="h-4 w-4" />
+                            읽기 과제
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="title">과제 제목</Label>
                       <Input
@@ -614,10 +668,12 @@ const Instructor = () => {
                   </CardContent>
                 </Card>
 
-                {/* Column 2 - Bulk Question Input */}
-                <div className="h-fit">
-                  <BulkQuestionInput onAddQuestions={addBulkQuestions} />
-                </div>
+                {/* Column 2 - Bulk Question Input (only for quiz) */}
+                {assignmentType === 'quiz' && (
+                  <div className="h-fit">
+                    <BulkQuestionInput onAddQuestions={addBulkQuestions} />
+                  </div>
+                )}
 
                 {/* Column 3 - Student Selector */}
                 <StudentSelector
@@ -626,7 +682,8 @@ const Instructor = () => {
                 />
               </div>
 
-              {/* Bottom - Questions */}
+              {/* Bottom - Questions (only for quiz type) */}
+              {assignmentType === 'quiz' && (
               <Card>
                 <CardHeader variant="accent">
                   <CardTitle>문제</CardTitle>
@@ -799,6 +856,7 @@ const Instructor = () => {
                   </div>
                 </CardContent>
               </Card>
+              )}
             </div>
           </TabsContent>
 
@@ -822,8 +880,8 @@ const Instructor = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>제목</TableHead>
-                        <TableHead>문제</TableHead>
-                        <TableHead>제출</TableHead>
+                        <TableHead>유형</TableHead>
+                        <TableHead>문제/완료</TableHead>
                         <TableHead>마감일</TableHead>
                         <TableHead>작업</TableHead>
                       </TableRow>
@@ -832,14 +890,31 @@ const Instructor = () => {
                       {myAssignments.map((assignment) => (
                         <TableRow key={assignment.id}>
                           <TableCell className="font-medium">{assignment.title}</TableCell>
-                          <TableCell>{assignment.questions[0]?.count || 0}</TableCell>
                           <TableCell>
-                            <Button
-                              variant="link"
-                              onClick={() => fetchSubmissions(assignment.id)}
-                            >
-                              {assignment.submissions[0]?.count || 0}
-                            </Button>
+                            <Badge variant={assignment.assignment_type === 'quiz' ? 'default' : 'secondary'}>
+                              {assignment.assignment_type === 'quiz' ? (
+                                <><ClipboardList className="h-3 w-3 mr-1" />퀴즈</>
+                              ) : (
+                                <><BookOpen className="h-3 w-3 mr-1" />읽기</>
+                              )}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {assignment.assignment_type === 'quiz' ? (
+                              <Button
+                                variant="link"
+                                onClick={() => fetchSubmissions(assignment.id)}
+                              >
+                                {assignment.submissions[0]?.count || 0} 제출 ({assignment.questions[0]?.count || 0} 문제)
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="link"
+                                onClick={() => fetchCompletionStatus(assignment.id)}
+                              >
+                                완료 현황 보기
+                              </Button>
+                            )}
                           </TableCell>
                           <TableCell>
                             {assignment.due_date
@@ -905,6 +980,42 @@ const Instructor = () => {
                                 studentName={submission.student.full_name}
                                 onGradingComplete={() => fetchSubmissions(submission.assignment_id)}
                               />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {Object.keys(completionStatus).length > 0 && (
+                  <div className="mt-8">
+                    <h3 className="text-lg font-semibold mb-4">완료 현황</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>학생</TableHead>
+                          <TableHead>상태</TableHead>
+                          <TableHead>완료일</TableHead>
+                          <TableHead>메모</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(completionStatus).map(([studentId, status]) => (
+                          <TableRow key={studentId}>
+                            <TableCell>{studentId}</TableCell>
+                            <TableCell>
+                              {status.completed_at ? (
+                                <Badge className="bg-green-500"><Check className="h-3 w-3 mr-1" />완료</Badge>
+                              ) : (
+                                <Badge variant="outline"><X className="h-3 w-3 mr-1" />미완료</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {status.completed_at ? new Date(status.completed_at).toLocaleDateString() : '-'}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate">
+                              {status.notes || '-'}
                             </TableCell>
                           </TableRow>
                         ))}

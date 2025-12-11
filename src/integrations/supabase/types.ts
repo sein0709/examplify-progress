@@ -14,8 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignment_completions: {
+        Row: {
+          assignment_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          student_id: string
+        }
+        Insert: {
+          assignment_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          student_id: string
+        }
+        Update: {
+          assignment_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_completions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_completions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
+          assignment_type: string
           created_at: string
           description: string | null
           due_date: string | null
@@ -29,6 +72,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assignment_type?: string
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -42,6 +86,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assignment_type?: string
           created_at?: string
           description?: string | null
           due_date?: string | null
