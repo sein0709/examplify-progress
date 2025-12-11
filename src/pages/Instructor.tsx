@@ -30,6 +30,7 @@ import { StudentAssignmentManager } from "@/components/StudentAssignmentManager"
 import { StudentSelector } from "@/components/StudentSelector";
 import { MathInput } from "@/components/MathInput";
 import { MathDisplay } from "@/components/MathDisplay";
+import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface QuestionForm {
@@ -53,6 +54,7 @@ interface Assignment {
 
 interface Submission {
   id: string;
+  assignment_id: string;
   score: number | null;
   total_questions: number;
   submitted_at: string;
@@ -875,6 +877,7 @@ const Instructor = () => {
                           <TableHead>점수</TableHead>
                           <TableHead>백분율</TableHead>
                           <TableHead>제출일</TableHead>
+                          <TableHead>채점</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -895,6 +898,13 @@ const Instructor = () => {
                             </TableCell>
                             <TableCell>
                               {new Date(submission.submitted_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <FRQGradingDialog
+                                submissionId={submission.id}
+                                studentName={submission.student.full_name}
+                                onGradingComplete={() => fetchSubmissions(submission.assignment_id)}
+                              />
                             </TableCell>
                           </TableRow>
                         ))}
