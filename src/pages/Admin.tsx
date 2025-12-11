@@ -25,6 +25,7 @@ import { BulkQuestionInput } from "@/components/BulkQuestionInput";
 import { StudentSelector } from "@/components/StudentSelector";
 import { MathInput } from "@/components/MathInput";
 import { MathDisplay } from "@/components/MathDisplay";
+import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 interface UserProfile {
   id: string;
   full_name: string;
@@ -1050,6 +1051,7 @@ setQuestions([{
                           <TableHead>점수</TableHead>
                           <TableHead>백분율</TableHead>
                           <TableHead>제출일</TableHead>
+                          <TableHead>채점</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1066,6 +1068,13 @@ setQuestions([{
                             </TableCell>
                             <TableCell>
                               {new Date(submission.submitted_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <FRQGradingDialog
+                                submissionId={submission.id}
+                                studentName={submission.student.full_name}
+                                onGradingComplete={fetchSubmissions}
+                              />
                             </TableCell>
                           </TableRow>)}
                       </TableBody>
