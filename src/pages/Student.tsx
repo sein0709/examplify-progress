@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, BookOpen, ClipboardList, Award, Calendar, User, Clock, FileText, TrendingUp, LogOut, Paperclip, ExternalLink, Image as ImageIcon, PenLine } from "lucide-react";
 import { FilePreview } from "@/components/FilePreview";
@@ -88,6 +89,7 @@ const Student = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submissionAnswers, setSubmissionAnswers] = useState<StudentAnswerResult[]>([]);
   const [togglingCompletion, setTogglingCompletion] = useState(false);
+  const [completionNotes, setCompletionNotes] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     fetchAssignments();
@@ -206,11 +208,11 @@ const Student = () => {
     }
   };
 
-  const toggleCompletion = async (assignment: Assignment) => {
+  const toggleCompletion = async (assignment: Assignment, checked: boolean) => {
     if (!user) return;
     setTogglingCompletion(true);
     try {
-      if (assignment.completion) {
+      if (!checked) {
         // Remove completion
         const { error } = await supabase
           .from("assignment_completions")
@@ -219,14 +221,21 @@ const Student = () => {
           .eq("student_id", user.id);
         
         if (error) throw error;
+        setCompletionNotes(prev => {
+          const updated = { ...prev };
+          delete updated[assignment.id];
+          return updated;
+        });
         toast.success("완료 표시가 취소되었습니다");
       } else {
-        // Add completion
+        // Add completion with notes
+        const notes = completionNotes[assignment.id] || null;
         const { error } = await supabase
           .from("assignment_completions")
           .insert({
             assignment_id: assignment.id,
             student_id: user.id,
+            notes,
           });
         
         if (error) throw error;
@@ -237,6 +246,23 @@ const Student = () => {
       toast.error("완료 상태 변경 실패: " + error.message);
     } finally {
       setTogglingCompletion(false);
+    }
+  };
+
+  const updateCompletionNotes = async (assignment: Assignment, notes: string) => {
+    if (!user || !assignment.completion) return;
+    try {
+      const { error } = await supabase
+        .from("assignment_completions")
+        .update({ notes })
+        .eq("assignment_id", assignment.id)
+        .eq("student_id", user.id);
+      
+      if (error) throw error;
+      toast.success("메모가 저장되었습니다");
+      fetchAssignments();
+    } catch (error: any) {
+      toast.error("메모 저장 실패: " + error.message);
     }
   };
 
@@ -1136,20 +1162,40 @@ const Student = () => {
                                 />
                               </div>
                             )}
-                            <div className="flex items-center space-x-3">
-                              <Checkbox 
-                                id={`completion-${assignment.id}`}
-                                checked={!!assignment.completion}
-                                onCheckedChange={() => toggleCompletion(assignment)}
-                                disabled={togglingCompletion}
+                            <div className="space-y-3">
+                              <Textarea
+                                placeholder="배운 내용이나 메모를 입력하세요 (선택사항)"
+                                value={assignment.completion?.notes || completionNotes[assignment.id] || ''}
+                                onChange={(e) => {
+                                  if (assignment.completion) {
+                                    // If already completed, update in db on blur
+                                    setCompletionNotes(prev => ({ ...prev, [assignment.id]: e.target.value }));
+                                  } else {
+                                    setCompletionNotes(prev => ({ ...prev, [assignment.id]: e.target.value }));
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (assignment.completion && completionNotes[assignment.id] !== undefined) {
+                                    updateCompletionNotes(assignment, completionNotes[assignment.id]);
+                                  }
+                                }}
+                                className="min-h-[80px] text-sm"
                               />
-                              <Label 
-                                htmlFor={`completion-${assignment.id}`} 
-                                className="text-sm font-medium leading-none cursor-pointer"
-                              >
-                                완료 표시
-                              </Label>
-                              {togglingCompletion && <Loader2 className="h-4 w-4 animate-spin" />}
+                              <div className="flex items-center space-x-3">
+                                <Checkbox 
+                                  id={`completion-${assignment.id}`}
+                                  checked={!!assignment.completion}
+                                  onCheckedChange={(checked) => toggleCompletion(assignment, !!checked)}
+                                  disabled={togglingCompletion}
+                                />
+                                <Label 
+                                  htmlFor={`completion-${assignment.id}`} 
+                                  className="text-sm font-medium leading-none cursor-pointer"
+                                >
+                                  완료 표시
+                                </Label>
+                                {togglingCompletion && <Loader2 className="h-4 w-4 animate-spin" />}
+                              </div>
                             </div>
                             {assignment.completion && (
                               <p className="text-xs text-muted-foreground">
