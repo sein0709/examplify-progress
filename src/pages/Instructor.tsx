@@ -29,6 +29,7 @@ import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
 import { AssignmentAnalyticsCard } from "@/components/AssignmentAnalyticsCard";
 import { StudentScoreDialog } from "@/components/StudentScoreDialog";
+import { StudentGradeCard } from "@/components/StudentGradeCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 interface QuestionForm {
@@ -786,12 +787,17 @@ const Instructor = () => {
                   </Table>}
 
                 {selectedAssignmentSubmissions.length > 0 && <div className="mt-8 space-y-4">
-                    <h3 className="text-lg font-semibold">학생 목록</h3>
-                    <div className="relative max-w-sm">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">학생 목록</h3>
+                      <Badge variant="secondary" className="font-normal">
+                        {Array.from(new Map(selectedAssignmentSubmissions.map(s => [s.student_id, s])).values()).length}명
+                      </Badge>
+                    </div>
+                    <div className="relative max-w-md">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="학생 검색..."
-                        className="pl-9"
+                        placeholder="이름으로 학생 검색..."
+                        className="pl-11 h-11 bg-background/50 border-border/50 focus:border-primary/50 rounded-xl"
                         value={gradesSearch}
                         onChange={(e) => setGradesSearch(e.target.value)}
                       />
@@ -802,14 +808,19 @@ const Instructor = () => {
                       ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()))
                        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
                       return filteredStudents.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-4">검색 결과가 없습니다</p>
+                        <Card className="border-dashed">
+                          <CardContent className="py-8">
+                            <p className="text-center text-muted-foreground">검색 결과가 없습니다</p>
+                          </CardContent>
+                        </Card>
                       ) : (
-                        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                          {filteredStudents.map(student => (
-                            <StudentScoreDialog
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {filteredStudents.map((student, index) => (
+                            <StudentGradeCard
                               key={student.id}
                               studentId={student.id}
                               studentName={student.name}
+                              index={index}
                             />
                           ))}
                         </div>
