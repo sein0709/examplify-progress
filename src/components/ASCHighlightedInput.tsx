@@ -120,16 +120,16 @@ export const ASCHighlightedInput = ({ value, onChange, placeholder, className }:
               colorClass = "text-muted-foreground";
               break;
             case 'mcq':
-              colorClass = "text-accent-foreground bg-accent/60 rounded px-0.5";
+              colorClass = "text-accent-foreground bg-accent/60 rounded-sm";
               break;
             case 'frq':
-              colorClass = "text-blue-600 dark:text-blue-400 font-semibold";
+              colorClass = "text-blue-600 dark:text-blue-400";
               break;
             case 'frq-content':
               colorClass = "text-blue-500 dark:text-blue-300";
               break;
             case 'error':
-              colorClass = "text-destructive bg-destructive/20 rounded";
+              colorClass = "text-destructive bg-destructive/20 rounded-sm";
               break;
             case 'whitespace':
               colorClass = "";
