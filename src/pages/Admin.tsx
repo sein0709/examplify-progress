@@ -839,7 +839,7 @@ setQuestions([{
                             <RadioGroupItem value="reading" id="type-reading" />
                             <Label htmlFor="type-reading" className="flex items-center gap-1 cursor-pointer">
                               <BookOpen className="h-4 w-4" />
-                              읽기 과제
+                              비퀴즈 과제
                             </Label>
                           </div>
                         </RadioGroup>
@@ -1110,7 +1110,7 @@ setQuestions([{
                                   : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                               )}>
                                 {assignment.assignment_type === "reading" ? (
-                                  <><BookOpen className="h-3 w-3" /> 읽기 과제</>
+                                  <><BookOpen className="h-3 w-3" /> 비퀴즈</>
                                 ) : (
                                   <><ClipboardList className="h-3 w-3" /> 퀴즈</>
                                 )}

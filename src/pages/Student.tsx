@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -1052,7 +1053,7 @@ const Student = () => {
                               )}
                               {assignment.title}
                               <Badge variant={isReading ? 'secondary' : 'default'} className="ml-2">
-                                {isReading ? '읽기 과제' : '퀴즈'}
+                                {isReading ? '비퀴즈 과제' : '퀴즈'}
                               </Badge>
                             </CardTitle>
                             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -1135,28 +1136,23 @@ const Student = () => {
                                 />
                               </div>
                             )}
-                            <Button 
-                              onClick={() => toggleCompletion(assignment)}
-                              disabled={togglingCompletion}
-                              variant={assignment.completion ? "outline" : "default"}
-                              className="w-full hover:scale-[1.02] transition-transform shadow-md"
-                            >
-                              {togglingCompletion ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              ) : assignment.completion ? (
-                                <>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  완료 취소
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                                  완료 표시
-                                </>
-                              )}
-                            </Button>
+                            <div className="flex items-center space-x-3">
+                              <Checkbox 
+                                id={`completion-${assignment.id}`}
+                                checked={!!assignment.completion}
+                                onCheckedChange={() => toggleCompletion(assignment)}
+                                disabled={togglingCompletion}
+                              />
+                              <Label 
+                                htmlFor={`completion-${assignment.id}`} 
+                                className="text-sm font-medium leading-none cursor-pointer"
+                              >
+                                완료 표시
+                              </Label>
+                              {togglingCompletion && <Loader2 className="h-4 w-4 animate-spin" />}
+                            </div>
                             {assignment.completion && (
-                              <p className="text-xs text-muted-foreground text-center">
+                              <p className="text-xs text-muted-foreground">
                                 완료일: {new Date(assignment.completion.completed_at).toLocaleDateString()}
                               </p>
                             )}
