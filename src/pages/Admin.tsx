@@ -316,18 +316,21 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
   };
 
   // Create Assignment Functions
-  const getFileType = (mimeType: string): 'image' | 'pdf' | 'document' | 'presentation' | null => {
+  const getFileType = (mimeType: string): 'image' | 'pdf' | 'document' | 'presentation' | 'spreadsheet' | null => {
     if (mimeType.startsWith('image/')) {
       return 'image';
     }
     if (mimeType === 'application/pdf') {
       return 'pdf';
     }
-    if (mimeType === 'application/msword' || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    if (mimeType === 'application/msword' || mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || mimeType === 'text/plain') {
       return 'document';
     }
     if (mimeType === 'application/vnd.ms-powerpoint' || mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
       return 'presentation';
+    }
+    if (mimeType === 'application/vnd.ms-excel' || mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+      return 'spreadsheet';
     }
     return null;
   };
@@ -786,7 +789,7 @@ setQuestions([{
                       <div className="space-y-2">
                         <Label htmlFor="file">파일 업로드 (선택사항)</Label>
                         <div className="flex gap-2 items-center">
-                          <Input id="file" type="file" accept="image/*,.pdf" onChange={async e => {
+                          <Input id="file" type="file" accept="image/*,.pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx" onChange={async e => {
                         const file = e.target.files?.[0];
                         if (file) {
                           setUploadedFile(file);
