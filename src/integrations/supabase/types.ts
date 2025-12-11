@@ -145,6 +145,7 @@ export type Database = {
           graded_by: string | null
           id: string
           is_correct: boolean | null
+          points_earned: number | null
           question_id: string
           selected_answer: number | null
           submission_id: string
@@ -156,6 +157,7 @@ export type Database = {
           graded_by?: string | null
           id?: string
           is_correct?: boolean | null
+          points_earned?: number | null
           question_id: string
           selected_answer?: number | null
           submission_id: string
@@ -167,6 +169,7 @@ export type Database = {
           graded_by?: string | null
           id?: string
           is_correct?: boolean | null
+          points_earned?: number | null
           question_id?: string
           selected_answer?: number | null
           submission_id?: string
