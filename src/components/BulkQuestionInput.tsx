@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, Plus, Eye, EyeOff } from "lucide-react";
 import { MathDisplay } from "./MathDisplay";
+import { parseASC } from "@/lib/ascParser";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export interface ParsedQuestion {
   text: string;
@@ -23,7 +26,9 @@ interface BulkQuestionInputProps {
 const DEFAULT_OPTIONS = ["1", "2", "3", "4", "5"];
 
 export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) => {
+  const [inputMode, setInputMode] = useState<"traditional" | "asc">("traditional");
   const [bulkText, setBulkText] = useState("");
+  const [ascInput, setAscInput] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [parsedQuestions, setParsedQuestions] = useState<ParsedQuestion[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -97,12 +102,33 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
     }
   };
 
+  const handleASCPreview = () => {
+    setParseError(null);
+    const result = parseASC(ascInput);
+    if (result.success === false) {
+      setParseError(result.error);
+      return;
+    }
+    setParsedQuestions(result.questions);
+    setShowPreview(true);
+  };
+
   const handleAdd = () => {
     if (parsedQuestions.length > 0) {
       onAddQuestions(parsedQuestions);
       setBulkText("");
+      setAscInput("");
       setParsedQuestions([]);
       setShowPreview(false);
+    }
+  };
+
+  const handleModeChange = (value: string) => {
+    if (value) {
+      setInputMode(value as "traditional" | "asc");
+      setShowPreview(false);
+      setParsedQuestions([]);
+      setParseError(null);
     }
   };
 
@@ -118,22 +144,33 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 flex-1 flex flex-col">
-        <Alert className="bg-muted/50">
-          <Info className="h-4 w-4" />
-          <AlertDescription className="text-sm space-y-2">
-            <div>
-              <strong>객관식:</strong> 첫 줄에 문제, 둘째 줄에 정답 번호(1-5)
-            </div>
-            <div>
-              <strong>서술형:</strong> <code>[서술형]</code> 접두사와 문제, 둘째 줄에 모범답안 (LaTeX 지원)
-            </div>
-          </AlertDescription>
-        </Alert>
+        <ToggleGroup type="single" value={inputMode} onValueChange={handleModeChange} className="justify-start">
+          <ToggleGroupItem value="traditional" aria-label="기존 방식">
+            기존 방식
+          </ToggleGroupItem>
+          <ToggleGroupItem value="asc" aria-label="정답 코드 (ASC)">
+            정답 코드 (ASC)
+          </ToggleGroupItem>
+        </ToggleGroup>
 
-        <div className="space-y-2 flex-1 flex flex-col">
-          <Label>문제 붙여넣기</Label>
-          <Textarea
-            placeholder={`프랑스의 수도는 무엇인가요?
+        {inputMode === "traditional" ? (
+          <>
+            <Alert className="bg-muted/50">
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-sm space-y-2">
+                <div>
+                  <strong>객관식:</strong> 첫 줄에 문제, 둘째 줄에 정답 번호(1-5)
+                </div>
+                <div>
+                  <strong>서술형:</strong> <code>[서술형]</code> 접두사와 문제, 둘째 줄에 모범답안 (LaTeX 지원)
+                </div>
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2 flex-1 flex flex-col">
+              <Label>문제 붙여넣기</Label>
+              <Textarea
+                placeholder={`프랑스의 수도는 무엇인가요?
 3
 
 [서술형] x²의 미분값을 구하시오.
@@ -144,11 +181,43 @@ export const BulkQuestionInput = ({ onAddQuestions }: BulkQuestionInputProps) =>
 
 [서술형] 이차방정식의 근의 공식을 작성하시오.
 x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}`}
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            className="font-mono text-sm flex-1 min-h-[200px]"
-          />
-        </div>
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                className="font-mono text-sm flex-1 min-h-[200px]"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <Alert className="bg-muted/50">
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-sm space-y-2">
+                <div>
+                  <strong>형식:</strong> <code>문제수: 정답코드</code>
+                </div>
+                <div>
+                  <strong>MCQ:</strong> 숫자 1-5 (정답 번호)
+                </div>
+                <div>
+                  <strong>FRQ:</strong> <code>F</code> (빈 답안) 또는 <code>F(모범답안)</code>
+                </div>
+                <div className="text-muted-foreground">
+                  예: <code>10: 12F(2x)34F(99)5F(a^2)FF</code>
+                </div>
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label>정답 코드 (ASC)</Label>
+              <Input
+                placeholder="10: 12345F(답)12F34"
+                value={ascInput}
+                onChange={(e) => setAscInput(e.target.value)}
+                className="font-mono"
+              />
+            </div>
+          </>
+        )}
 
         {parseError && (
           <Alert variant="destructive">
@@ -160,8 +229,8 @@ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}`}
           <Button
             type="button"
             variant="outline"
-            onClick={handlePreview}
-            disabled={!bulkText.trim()}
+            onClick={inputMode === "traditional" ? handlePreview : handleASCPreview}
+            disabled={inputMode === "traditional" ? !bulkText.trim() : !ascInput.trim()}
           >
             {showPreview ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
             {showPreview ? "미리보기 숨기기" : "문제 미리보기"}
