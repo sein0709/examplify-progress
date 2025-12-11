@@ -54,7 +54,6 @@ interface Assignment {
     count: number;
   }[];
 }
-
 interface Submission {
   id: string;
   score: number | null;
@@ -100,7 +99,7 @@ const Admin = () => {
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
-const [questions, setQuestions] = useState<QuestionForm[]>([{
+  const [questions, setQuestions] = useState<QuestionForm[]>([{
     text: "",
     options: ["", "", "", "", ""],
     correctAnswer: 0,
@@ -115,17 +114,17 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
   const [maxAttempts, setMaxAttempts] = useState<number>(1);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [assignmentType, setAssignmentType] = useState<"quiz" | "reading">("quiz");
-  
+
   // Analytics Filter States
   const [analyticsSearch, setAnalyticsSearch] = useState("");
   const [analyticsTypeFilter, setAnalyticsTypeFilter] = useState("all");
   const [analyticsInstructorFilter, setAnalyticsInstructorFilter] = useState("all-instructors");
   const [analyticsSortOrder, setAnalyticsSortOrder] = useState("newest");
-  
+
   // Grades Search State
   const [gradesSearch, setGradesSearch] = useState("");
   const [gradesViewMode, setGradesViewMode] = useState<"grid" | "list">("grid");
-  
+
   // Filtered assignments for analytics
   const filteredAnalyticsAssignments = assignments.filter(assignment => {
     const matchesSearch = assignment.title.toLowerCase().includes(analyticsSearch.toLowerCase());
@@ -138,7 +137,6 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
     if (analyticsSortOrder === "name") return a.title.localeCompare(b.title);
     return 0;
   });
-
   const fetchUsers = async () => {
     try {
       const {
@@ -293,11 +291,12 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
     try {
       // Delete user role first (if exists)
       await supabase.from("user_roles").delete().eq("user_id", userId);
-      
+
       // Delete profile
-      const { error } = await supabase.from("profiles").delete().eq("id", userId);
+      const {
+        error
+      } = await supabase.from("profiles").delete().eq("id", userId);
       if (error) throw error;
-      
       toast.success("사용자 거부 완료 - 대기 목록에서 삭제됨");
       fetchUsers();
     } catch (error: any) {
@@ -366,7 +365,7 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
     }
     return null;
   };
-const addQuestion = () => {
+  const addQuestion = () => {
     setQuestions([...questions, {
       text: "",
       options: ["", "", "", "", ""],
@@ -525,7 +524,7 @@ const addQuestion = () => {
       setUploadedFile(null);
       setSelectedStudentIds([]);
       setAssignmentType("quiz");
-setQuestions([{
+      setQuestions([{
         text: "",
         options: ["", "", "", "", ""],
         correctAnswer: 0,
@@ -803,7 +802,7 @@ setQuestions([{
 
                       <div className="space-y-2">
                         <Label>과제 유형</Label>
-                        <RadioGroup value={assignmentType} onValueChange={(value) => setAssignmentType(value as "quiz" | "reading")} className="flex gap-4">
+                        <RadioGroup value={assignmentType} onValueChange={value => setAssignmentType(value as "quiz" | "reading")} className="flex gap-4">
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="quiz" id="type-quiz" />
                             <Label htmlFor="type-quiz" className="flex items-center gap-1 cursor-pointer">
@@ -865,8 +864,7 @@ setQuestions([{
                         </p>
                       </div>
 
-                      {assignmentType === "quiz" && (
-                        <div className="space-y-4 border-t pt-4">
+                      {assignmentType === "quiz" && <div className="space-y-4 border-t pt-4">
                           <div className="flex items-center space-x-2">
                             <Checkbox id="resubmittable" checked={isResubmittable} onCheckedChange={checked => setIsResubmittable(checked as boolean)} />
                             <Label htmlFor="resubmittable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -881,8 +879,7 @@ setQuestions([{
                                 학생들은 이 과제를 최대 {maxAttempts}회까지 제출할 수 있습니다
                               </p>
                             </div>}
-                        </div>
-                      )}
+                        </div>}
 
                       <Button onClick={handleCreateAssignment} className="w-full" disabled={submitting}>
                         {submitting ? <>
@@ -894,27 +891,24 @@ setQuestions([{
                   </Card>
 
                   {/* Column 2 - Bulk Question Input (Quiz only) */}
-                  {assignmentType === "quiz" && (
-                    <div className="h-fit">
+                  {assignmentType === "quiz" && <div className="h-fit">
                       <BulkQuestionInput onAddQuestions={newQuestions => {
-                    setQuestions(prev => {
-                      const hasContent = prev.length > 0 && (prev[0].text || prev[0].options.some(o => o));
-                      if (hasContent) {
-                        return [...prev, ...newQuestions];
-                      }
-                      return newQuestions;
-                    });
-                  }} />
-                    </div>
-                  )}
+                  setQuestions(prev => {
+                    const hasContent = prev.length > 0 && (prev[0].text || prev[0].options.some(o => o));
+                    if (hasContent) {
+                      return [...prev, ...newQuestions];
+                    }
+                    return newQuestions;
+                  });
+                }} />
+                    </div>}
 
                   {/* Column 3 - Student Selector */}
                   <StudentSelector selectedStudentIds={selectedStudentIds} onSelectionChange={setSelectedStudentIds} />
                 </div>
 
                 {/* Bottom - Questions (Quiz only) */}
-                {assignmentType === "quiz" && (
-                  <Card>
+                {assignmentType === "quiz" && <Card>
                       <CardHeader variant="accent">
                         <CardTitle>문제</CardTitle>
                         <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
@@ -922,14 +916,14 @@ setQuestions([{
                       <CardContent className="space-y-6">
                         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mt-2">
                           {questions.map((question, qIndex) => {
-                      const hasContent = question.text || question.options.some(o => o);
-                      return <div key={qIndex} onClick={() => {
-                        const element = document.getElementById(`admin-question-form-${qIndex}`);
-                        element?.scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'center'
-                        });
-                      }} className={cn("group relative aspect-square rounded-xl cursor-pointer", "border-2 transition-all duration-300 ease-out", "hover:scale-105 hover:shadow-lg hover:-translate-y-1", hasContent ? "bg-gradient-to-br from-accent/20 to-accent/5 border-accent/40 hover:border-accent hover:shadow-accent/20" : "bg-gradient-to-br from-muted/50 to-muted/20 border-border hover:border-accent/60")}>
+                    const hasContent = question.text || question.options.some(o => o);
+                    return <div key={qIndex} onClick={() => {
+                      const element = document.getElementById(`admin-question-form-${qIndex}`);
+                      element?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                      });
+                    }} className={cn("group relative aspect-square rounded-xl cursor-pointer", "border-2 transition-all duration-300 ease-out", "hover:scale-105 hover:shadow-lg hover:-translate-y-1", hasContent ? "bg-gradient-to-br from-accent/20 to-accent/5 border-accent/40 hover:border-accent hover:shadow-accent/20" : "bg-gradient-to-br from-muted/50 to-muted/20 border-border hover:border-accent/60")}>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
                                   <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mb-2", "text-lg font-bold transition-colors duration-300", hasContent ? "bg-accent/30 text-accent-foreground group-hover:bg-accent/50" : "bg-muted text-muted-foreground group-hover:bg-accent/20")}>
                                     {qIndex + 1}
@@ -940,7 +934,7 @@ setQuestions([{
                                 </div>
                                 {hasContent && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
                               </div>;
-                    })}
+                  })}
                         </div>
 
                         <div className="space-y-6">
@@ -963,20 +957,10 @@ setQuestions([{
                                 <div className="space-y-2">
                                   <Label>문제 유형</Label>
                                   <div className="flex gap-2">
-                                    <Button
-                                      type="button"
-                                      variant={question.questionType === "multiple_choice" ? "default" : "outline"}
-                                      size="sm"
-                                      onClick={() => updateQuestion(qIndex, "questionType", "multiple_choice")}
-                                    >
+                                    <Button type="button" variant={question.questionType === "multiple_choice" ? "default" : "outline"} size="sm" onClick={() => updateQuestion(qIndex, "questionType", "multiple_choice")}>
                                       객관식
                                     </Button>
-                                    <Button
-                                      type="button"
-                                      variant={question.questionType === "free_response" ? "default" : "outline"}
-                                      size="sm"
-                                      onClick={() => updateQuestion(qIndex, "questionType", "free_response")}
-                                    >
+                                    <Button type="button" variant={question.questionType === "free_response" ? "default" : "outline"} size="sm" onClick={() => updateQuestion(qIndex, "questionType", "free_response")}>
                                       서술형
                                     </Button>
                                   </div>
@@ -987,8 +971,7 @@ setQuestions([{
                                   <Input placeholder="문제 텍스트를 입력하세요" value={question.text} onChange={e => updateQuestion(qIndex, "text", e.target.value)} />
                                 </div>
 
-                                {question.questionType === "multiple_choice" ? (
-                                  <div className="space-y-3">
+                                {question.questionType === "multiple_choice" ? <div className="space-y-3">
                                     <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
                                       <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
                                       <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
@@ -1006,9 +989,7 @@ setQuestions([{
                                             </span>}
                                         </div>)}
                                     </RadioGroup>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-3">
+                                  </div> : <div className="space-y-3">
                                     <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-md">
                                       <Info className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
                                       <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">
@@ -1017,20 +998,13 @@ setQuestions([{
                                     </div>
                                     <div className="space-y-2">
                                       <Label>모범 답안 (선택사항)</Label>
-                                      <MathInput
-                                        value={question.modelAnswer}
-                                        onChange={(value) => updateQuestion(qIndex, "modelAnswer", value)}
-                                        placeholder="채점 기준이 되는 모범 답안을 입력하세요..."
-                                      />
-                                      {question.modelAnswer && (
-                                        <div className="p-3 bg-muted rounded-md">
+                                      <MathInput value={question.modelAnswer} onChange={value => updateQuestion(qIndex, "modelAnswer", value)} placeholder="채점 기준이 되는 모범 답안을 입력하세요..." />
+                                      {question.modelAnswer && <div className="p-3 bg-muted rounded-md">
                                           <Label className="text-xs text-muted-foreground mb-1 block">미리보기:</Label>
                                           <MathDisplay latex={question.modelAnswer} />
-                                        </div>
-                                      )}
+                                        </div>}
                                     </div>
-                                  </div>
-                                )}
+                                  </div>}
 
                                 <div className="space-y-2">
                                   <Label htmlFor={`admin-explanation-${qIndex}`}>설명 (선택사항)</Label>
@@ -1045,8 +1019,7 @@ setQuestions([{
                           문제 추가
                         </Button>
                       </CardContent>
-                    </Card>
-                )}
+                    </Card>}
               </div>
             </TabsContent>
 
@@ -1079,26 +1052,13 @@ setQuestions([{
                               {assignment.title}
                             </TableCell>
                             <TableCell>
-                              <span className={cn(
-                                "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                                assignment.assignment_type === "reading" 
-                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" 
-                                  : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                              )}>
-                                {assignment.assignment_type === "reading" ? (
-                                  <><BookOpen className="h-3 w-3" /> 비퀴즈</>
-                                ) : (
-                                  <><ClipboardList className="h-3 w-3" /> 퀴즈</>
-                                )}
+                              <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium", assignment.assignment_type === "reading" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200")}>
+                                {assignment.assignment_type === "reading" ? <><BookOpen className="h-3 w-3" /> 비퀴즈</> : <><ClipboardList className="h-3 w-3" /> 퀴즈</>}
                               </span>
                             </TableCell>
                             <TableCell>{assignment.instructor.full_name}</TableCell>
                             <TableCell>
-                              {assignment.assignment_type === "reading" ? (
-                                <CompletionStatusDialog assignmentId={assignment.id} assignmentTitle={assignment.title} />
-                              ) : (
-                                assignment.questions[0]?.count || 0
-                              )}
+                              {assignment.assignment_type === "reading" ? <CompletionStatusDialog assignmentId={assignment.id} assignmentTitle={assignment.title} /> : assignment.questions[0]?.count || 0}
                             </TableCell>
                             <TableCell>
                               {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : "마감일 없음"}
@@ -1123,16 +1083,13 @@ setQuestions([{
               <div className="space-y-6">
                 {/* Stats Overview */}
                 {(() => {
-                  const uniqueStudents = Array.from(
-                    new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
-                  );
-                  const gradedSubs = submissions.filter(s => s.score !== null);
-                  const avgScore = gradedSubs.length > 0 
-                    ? Math.round(gradedSubs.reduce((acc, s) => acc + (s.score! / s.total_questions) * 100, 0) / gradedSubs.length)
-                    : 0;
-                  
-                  return (
-                    <>
+              const uniqueStudents = Array.from(new Map(submissions.map(s => [s.student_id, {
+                id: s.student_id,
+                name: s.student.full_name
+              }])).values());
+              const gradedSubs = submissions.filter(s => s.score !== null);
+              const avgScore = gradedSubs.length > 0 ? Math.round(gradedSubs.reduce((acc, s) => acc + s.score! / s.total_questions * 100, 0) / gradedSubs.length) : 0;
+              return <>
                       {/* Header with gradient */}
                       <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-accent/5 to-background border border-border/50 p-6">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -1142,7 +1099,7 @@ setQuestions([{
                           
                           <div className="flex flex-wrap gap-6 mt-4">
                             <div>
-                              <p className="text-3xl font-bold text-primary">{uniqueStudents.length}</p>
+                              <p className="text-3xl font-bold text-foreground">{uniqueStudents.length}</p>
                               <p className="text-sm text-muted-foreground">등록 학생</p>
                             </div>
                             <div className="w-px bg-border/50" />
@@ -1163,45 +1120,27 @@ setQuestions([{
                       <div className="flex items-center gap-3">
                         <div className="relative flex-1 max-w-md">
                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="이름으로 학생 검색..."
-                            className="pl-11 h-11 bg-background/50 border-border/50 focus:border-primary/50 rounded-xl"
-                            value={gradesSearch}
-                            onChange={(e) => setGradesSearch(e.target.value)}
-                          />
+                          <Input placeholder="이름으로 학생 검색..." className="pl-11 h-11 bg-background/50 border-border/50 focus:border-primary/50 rounded-xl" value={gradesSearch} onChange={e => setGradesSearch(e.target.value)} />
                         </div>
                         <div className="flex items-center border border-border/50 rounded-lg p-1 bg-muted/30">
-                          <Button
-                            variant={gradesViewMode === "grid" ? "secondary" : "ghost"}
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => setGradesViewMode("grid")}
-                          >
+                          <Button variant={gradesViewMode === "grid" ? "secondary" : "ghost"} size="sm" className="h-8 w-8 p-0" onClick={() => setGradesViewMode("grid")}>
                             <LayoutGrid className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant={gradesViewMode === "list" ? "secondary" : "ghost"}
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => setGradesViewMode("list")}
-                          >
+                          <Button variant={gradesViewMode === "list" ? "secondary" : "ghost"} size="sm" className="h-8 w-8 p-0" onClick={() => setGradesViewMode("list")}>
                             <List className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                    </>
-                  );
-                })()}
+                    </>;
+            })()}
 
                 {/* Student Grid/List */}
                 {(() => {
-                  const uniqueStudents = Array.from(
-                    new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
-                  ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()))
-                   .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-                  
-                  return uniqueStudents.length === 0 ? (
-                    <Card className="border-dashed">
+              const uniqueStudents = Array.from(new Map(submissions.map(s => [s.student_id, {
+                id: s.student_id,
+                name: s.student.full_name
+              }])).values()).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase())).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+              return uniqueStudents.length === 0 ? <Card className="border-dashed">
                       <CardContent className="py-16">
                         <div className="text-center">
                           <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -1215,20 +1154,9 @@ setQuestions([{
                           </p>
                         </div>
                       </CardContent>
-                    </Card>
-                  ) : gradesViewMode === "grid" ? (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {uniqueStudents.map((student, index) => (
-                        <StudentGradeCard
-                          key={student.id}
-                          studentId={student.id}
-                          studentName={student.name}
-                          index={index}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <Card>
+                    </Card> : gradesViewMode === "grid" ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {uniqueStudents.map((student, index) => <StudentGradeCard key={student.id} studentId={student.id} studentName={student.name} index={index} />)}
+                    </div> : <Card>
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1237,8 +1165,7 @@ setQuestions([{
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {uniqueStudents.map((student) => (
-                            <TableRow key={student.id} className="group">
+                          {uniqueStudents.map(student => <TableRow key={student.id} className="group">
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-xs font-medium">
@@ -1248,23 +1175,15 @@ setQuestions([{
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">
-                                <StudentScoreDialog
-                                  studentId={student.id}
-                                  studentName={student.name}
-                                  trigger={
-                                    <Button variant="ghost" size="sm">
+                                <StudentScoreDialog studentId={student.id} studentName={student.name} trigger={<Button variant="ghost" size="sm">
                                       상세보기
-                                    </Button>
-                                  }
-                                />
+                                    </Button>} />
                               </TableCell>
-                            </TableRow>
-                          ))}
+                            </TableRow>)}
                         </TableBody>
                       </Table>
-                    </Card>
-                  );
-                })()}
+                    </Card>;
+            })()}
               </div>
             </TabsContent>
 
@@ -1322,12 +1241,7 @@ setQuestions([{
                     <div className="flex flex-col sm:flex-row gap-4">
                       <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="과제 검색..."
-                          className="pl-9"
-                          value={analyticsSearch}
-                          onChange={(e) => setAnalyticsSearch(e.target.value)}
-                        />
+                        <Input placeholder="과제 검색..." className="pl-9" value={analyticsSearch} onChange={e => setAnalyticsSearch(e.target.value)} />
                       </div>
                       <Select value={analyticsTypeFilter} onValueChange={setAnalyticsTypeFilter}>
                         <SelectTrigger className="w-[150px]">
@@ -1345,11 +1259,9 @@ setQuestions([{
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all-instructors">전체 강사</SelectItem>
-                          {instructorsList.map(instructor => (
-                            <SelectItem key={instructor.id} value={instructor.id}>
+                          {instructorsList.map(instructor => <SelectItem key={instructor.id} value={instructor.id}>
                               {instructor.full_name}
-                            </SelectItem>
-                          ))}
+                            </SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Select value={analyticsSortOrder} onValueChange={setAnalyticsSortOrder}>
@@ -1367,25 +1279,15 @@ setQuestions([{
                 </Card>
 
                 {/* Assignment Analytics Cards */}
-                {filteredAnalyticsAssignments.length === 0 ? (
-                  <Card>
+                {filteredAnalyticsAssignments.length === 0 ? <Card>
                     <CardContent className="py-12">
                       <p className="text-center text-muted-foreground">
                         {assignments.length === 0 ? "등록된 과제가 없습니다" : "검색 결과가 없습니다"}
                       </p>
                     </CardContent>
-                  </Card>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredAnalyticsAssignments.map((assignment) => (
-                      <AssignmentAnalyticsCard
-                        key={assignment.id}
-                        assignment={assignment}
-                        showInstructor={true}
-                      />
-                    ))}
-                  </div>
-                )}
+                  </Card> : <div className="space-y-4">
+                    {filteredAnalyticsAssignments.map(assignment => <AssignmentAnalyticsCard key={assignment.id} assignment={assignment} showInstructor={true} />)}
+                  </div>}
               </div>
             </TabsContent>
           </Tabs>}
