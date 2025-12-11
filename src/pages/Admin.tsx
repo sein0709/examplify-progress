@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info, ClipboardList, BookOpen, Search, Users } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info, ClipboardList, BookOpen, Search, Users, LayoutGrid, List } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -124,6 +124,7 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
   
   // Grades Search State
   const [gradesSearch, setGradesSearch] = useState("");
+  const [gradesViewMode, setGradesViewMode] = useState<"grid" | "list">("grid");
   
   // Filtered assignments for analytics
   const filteredAnalyticsAssignments = assignments.filter(assignment => {
@@ -1158,21 +1159,41 @@ setQuestions([{
                         </div>
                       </div>
 
-                      {/* Search */}
-                      <div className="relative max-w-md">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="이름으로 학생 검색..."
-                          className="pl-11 h-11 bg-background/50 border-border/50 focus:border-primary/50 rounded-xl"
-                          value={gradesSearch}
-                          onChange={(e) => setGradesSearch(e.target.value)}
-                        />
+                      {/* Search and View Toggle */}
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex-1 max-w-md">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="이름으로 학생 검색..."
+                            className="pl-11 h-11 bg-background/50 border-border/50 focus:border-primary/50 rounded-xl"
+                            value={gradesSearch}
+                            onChange={(e) => setGradesSearch(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex items-center border border-border/50 rounded-lg p-1 bg-muted/30">
+                          <Button
+                            variant={gradesViewMode === "grid" ? "secondary" : "ghost"}
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setGradesViewMode("grid")}
+                          >
+                            <LayoutGrid className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={gradesViewMode === "list" ? "secondary" : "ghost"}
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setGradesViewMode("list")}
+                          >
+                            <List className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </>
                   );
                 })()}
 
-                {/* Student Grid */}
+                {/* Student Grid/List */}
                 {(() => {
                   const uniqueStudents = Array.from(
                     new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
@@ -1195,7 +1216,7 @@ setQuestions([{
                         </div>
                       </CardContent>
                     </Card>
-                  ) : (
+                  ) : gradesViewMode === "grid" ? (
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {uniqueStudents.map((student, index) => (
                         <StudentGradeCard
@@ -1206,6 +1227,42 @@ setQuestions([{
                         />
                       ))}
                     </div>
+                  ) : (
+                    <Card>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>학생</TableHead>
+                            <TableHead className="text-right">상세보기</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {uniqueStudents.map((student) => (
+                            <TableRow key={student.id} className="group">
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-xs font-medium">
+                                    {student.name?.slice(0, 2).toUpperCase()}
+                                  </div>
+                                  <span className="font-medium">{student.name}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <StudentScoreDialog
+                                  studentId={student.id}
+                                  studentName={student.name}
+                                  trigger={
+                                    <Button variant="ghost" size="sm">
+                                      상세보기
+                                    </Button>
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </Card>
                   );
                 })()}
               </div>
