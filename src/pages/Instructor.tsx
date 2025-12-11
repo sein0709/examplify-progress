@@ -783,40 +783,18 @@ const Instructor = () => {
                   </Table>}
 
                 {selectedAssignmentSubmissions.length > 0 && <div className="mt-8">
-                    <h3 className="text-lg font-semibold mb-4">제출 목록</h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>학생</TableHead>
-                          <TableHead>점수</TableHead>
-                          <TableHead>백분율</TableHead>
-                          <TableHead>제출일</TableHead>
-                          <TableHead>채점</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedAssignmentSubmissions.map(submission => <TableRow key={submission.id}>
-                            <TableCell>
-                              <StudentScoreDialog
-                                studentId={submission.student_id}
-                                studentName={submission.student.full_name}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {submission.score !== null ? `${submission.score}/${submission.total_questions}` : "대기중"}
-                            </TableCell>
-                            <TableCell>
-                              {submission.score !== null ? `${Math.round(submission.score / submission.total_questions * 100)}%` : "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(submission.submitted_at).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              <FRQGradingDialog submissionId={submission.id} studentName={submission.student.full_name} onGradingComplete={() => fetchSubmissions(submission.assignment_id)} />
-                            </TableCell>
-                          </TableRow>)}
-                      </TableBody>
-                    </Table>
+                    <h3 className="text-lg font-semibold mb-4">학생 목록</h3>
+                    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                      {Array.from(
+                        new Map(selectedAssignmentSubmissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
+                      ).map(student => (
+                        <StudentScoreDialog
+                          key={student.id}
+                          studentId={student.id}
+                          studentName={student.name}
+                        />
+                      ))}
+                    </div>
                   </div>}
 
               </CardContent>

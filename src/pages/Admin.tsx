@@ -1117,53 +1117,32 @@ setQuestions([{
             <TabsContent value="grades">
               <Card>
                 <CardHeader variant="accent">
-                  <CardTitle>전체 제출</CardTitle>
+                  <CardTitle>학생 성적</CardTitle>
                   <CardDescription>
-                    모든 과제에 대한 학생 제출 및 성적 보기
+                    학생 이름을 클릭하여 상세 성적을 확인하세요
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {submissions.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                      제출 내역이 없습니다
-                    </p> : <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>학생</TableHead>
-                          <TableHead>과제</TableHead>
-                          <TableHead>점수</TableHead>
-                          <TableHead>백분율</TableHead>
-                          <TableHead>제출일</TableHead>
-                          <TableHead>채점</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {submissions.map(submission => <TableRow key={submission.id}>
-                            <TableCell className="font-medium">
-                              <StudentScoreDialog
-                                studentId={submission.student_id}
-                                studentName={submission.student.full_name}
-                              />
-                            </TableCell>
-                            <TableCell>{submission.assignment.title}</TableCell>
-                            <TableCell>
-                              {submission.score !== null ? `${submission.score}/${submission.total_questions}` : "대기 중"}
-                            </TableCell>
-                            <TableCell>
-                              {submission.score !== null ? `${Math.round(submission.score / submission.total_questions * 100)}%` : "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(submission.submitted_at).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              <FRQGradingDialog
-                                submissionId={submission.id}
-                                studentName={submission.student.full_name}
-                                onGradingComplete={fetchSubmissions}
-                              />
-                            </TableCell>
-                          </TableRow>)}
-                      </TableBody>
-                    </Table>}
+                  {(() => {
+                    const uniqueStudents = Array.from(
+                      new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
+                    );
+                    return uniqueStudents.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-8">
+                        학생이 없습니다
+                      </p>
+                    ) : (
+                      <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                        {uniqueStudents.map(student => (
+                          <StudentScoreDialog
+                            key={student.id}
+                            studentId={student.id}
+                            studentName={student.name}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </TabsContent>
