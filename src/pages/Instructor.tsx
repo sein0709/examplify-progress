@@ -26,6 +26,7 @@ import { StudentSelector } from "@/components/StudentSelector";
 import { MathInput } from "@/components/MathInput";
 import { MathDisplay } from "@/components/MathDisplay";
 import { FRQGradingDialog } from "@/components/FRQGradingDialog";
+import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 interface QuestionForm {
   text: string;
@@ -105,12 +106,6 @@ const Instructor = () => {
   const [progressLoading, setProgressLoading] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [assignmentType, setAssignmentType] = useState<'quiz' | 'reading'>('quiz');
-  const [completionStatus, setCompletionStatus] = useState<{
-    [studentId: string]: {
-      completed_at: string | null;
-      notes: string | null;
-    };
-  }>({});
   useEffect(() => {
     fetchMyAssignments();
   }, [user]);
@@ -264,30 +259,6 @@ const Instructor = () => {
       toast.error("학생 진도를 불러오는데 실패했습니다: " + error.message);
     } finally {
       setProgressLoading(false);
-    }
-  };
-  const fetchCompletionStatus = async (assignmentId: string) => {
-    try {
-      const {
-        data,
-        error
-      } = await supabase.from("assignment_completions").select("student_id, completed_at, notes").eq("assignment_id", assignmentId);
-      if (error) throw error;
-      const statusMap: {
-        [studentId: string]: {
-          completed_at: string | null;
-          notes: string | null;
-        };
-      } = {};
-      (data || []).forEach(c => {
-        statusMap[c.student_id] = {
-          completed_at: c.completed_at,
-          notes: c.notes
-        };
-      });
-      setCompletionStatus(statusMap);
-    } catch (error: any) {
-      toast.error("완료 현황을 불러오는데 실패했습니다: " + error.message);
     }
   };
   const addQuestion = (type: 'multiple_choice' | 'free_response' = 'multiple_choice') => {
@@ -772,9 +743,7 @@ const Instructor = () => {
                           <TableCell>
                             {assignment.assignment_type === 'quiz' ? <Button variant="outline" size="sm" onClick={() => fetchSubmissions(assignment.id)} className="text-primary-foreground bg-primary border-muted">
                                 {assignment.submissions[0]?.count || 0} 제출 ({assignment.questions[0]?.count || 0} 문제)
-                              </Button> : <Button variant="outline" size="sm" onClick={() => fetchCompletionStatus(assignment.id)} className="text-primary-foreground bg-primary border-accent">
-                                완료 현황 보기
-                              </Button>}
+                              </Button> : <CompletionStatusDialog assignmentId={assignment.id} assignmentTitle={assignment.title} />}
                           </TableCell>
                           <TableCell>
                             {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : "마감일 없음"}
@@ -823,33 +792,6 @@ const Instructor = () => {
                     </Table>
                   </div>}
 
-                {Object.keys(completionStatus).length > 0 && <div className="mt-8">
-                    <h3 className="text-lg font-semibold mb-4">완료 현황</h3>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>학생</TableHead>
-                          <TableHead>상태</TableHead>
-                          <TableHead>완료일</TableHead>
-                          <TableHead>메모</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {Object.entries(completionStatus).map(([studentId, status]) => <TableRow key={studentId}>
-                            <TableCell>{studentId}</TableCell>
-                            <TableCell>
-                              {status.completed_at ? <Badge className="bg-green-500"><Check className="h-3 w-3 mr-1" />완료</Badge> : <Badge variant="outline"><X className="h-3 w-3 mr-1" />미완료</Badge>}
-                            </TableCell>
-                            <TableCell>
-                              {status.completed_at ? new Date(status.completed_at).toLocaleDateString() : '-'}
-                            </TableCell>
-                            <TableCell className="max-w-[200px] truncate">
-                              {status.notes || '-'}
-                            </TableCell>
-                          </TableRow>)}
-                      </TableBody>
-                    </Table>
-                  </div>}
               </CardContent>
             </Card>
           </TabsContent>

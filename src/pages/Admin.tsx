@@ -26,6 +26,7 @@ import { StudentSelector } from "@/components/StudentSelector";
 import { MathInput } from "@/components/MathInput";
 import { MathDisplay } from "@/components/MathDisplay";
 import { FRQGradingDialog } from "@/components/FRQGradingDialog";
+import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
 interface UserProfile {
   id: string;
   full_name: string;
@@ -51,12 +52,6 @@ interface Assignment {
   }[];
 }
 
-interface CompletionStatus {
-  studentName: string;
-  completed: boolean;
-  completedAt: string | null;
-  notes: string | null;
-}
 interface Submission {
   id: string;
   score: number | null;
@@ -117,7 +112,7 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
   const [maxAttempts, setMaxAttempts] = useState<number>(1);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [assignmentType, setAssignmentType] = useState<"quiz" | "reading">("quiz");
-  const [completionStatus, setCompletionStatus] = useState<{ assignmentTitle: string; statuses: CompletionStatus[] } | null>(null);
+  
   const fetchUsers = async () => {
     try {
       const {
@@ -162,51 +157,6 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
       setAssignments(data || []);
     } catch (error: any) {
       toast.error("과제 조회 실패: " + error.message);
-    }
-  };
-
-  const fetchCompletionStatus = async (assignmentId: string, assignmentTitle: string) => {
-    try {
-      // Get all students assigned to this assignment
-      const { data: studentAssignments, error: saError } = await supabase
-        .from("student_assignments")
-        .select("student_id")
-        .eq("assignment_id", assignmentId);
-      if (saError) throw saError;
-
-      const studentIds = studentAssignments?.map(sa => sa.student_id) || [];
-      if (studentIds.length === 0) {
-        setCompletionStatus({ assignmentTitle, statuses: [] });
-        return;
-      }
-
-      // Get student profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", studentIds);
-      if (profilesError) throw profilesError;
-
-      // Get completions for this assignment
-      const { data: completions, error: completionsError } = await supabase
-        .from("assignment_completions")
-        .select("*")
-        .eq("assignment_id", assignmentId);
-      if (completionsError) throw completionsError;
-
-      const statuses: CompletionStatus[] = (profiles || []).map(profile => {
-        const completion = completions?.find(c => c.student_id === profile.id);
-        return {
-          studentName: profile.full_name || "Unknown",
-          completed: !!completion,
-          completedAt: completion?.completed_at || null,
-          notes: completion?.notes || null
-        };
-      });
-
-      setCompletionStatus({ assignmentTitle, statuses });
-    } catch (error: any) {
-      toast.error("완료 현황 조회 실패: " + error.message);
     }
   };
   const fetchSubmissions = async () => {
@@ -1119,13 +1069,7 @@ setQuestions([{
                             <TableCell>{assignment.instructor.full_name}</TableCell>
                             <TableCell>
                               {assignment.assignment_type === "reading" ? (
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => fetchCompletionStatus(assignment.id, assignment.title)}
-                                >
-                                  완료 현황 보기
-                                </Button>
+                                <CompletionStatusDialog assignmentId={assignment.id} assignmentTitle={assignment.title} />
                               ) : (
                                 assignment.questions[0]?.count || 0
                               )}
@@ -1147,54 +1091,6 @@ setQuestions([{
                 </CardContent>
               </Card>
 
-              {/* Completion Status Display */}
-              {completionStatus && (
-                <Card>
-                  <CardHeader variant="accent">
-                    <CardTitle>완료 현황: {completionStatus.assignmentTitle}</CardTitle>
-                    <CardDescription>
-                      {completionStatus.statuses.filter(s => s.completed).length}/{completionStatus.statuses.length} 학생 완료
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {completionStatus.statuses.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-4">배정된 학생이 없습니다</p>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>학생</TableHead>
-                            <TableHead>상태</TableHead>
-                            <TableHead>완료일</TableHead>
-                            <TableHead>메모</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {completionStatus.statuses.map((status, idx) => (
-                            <TableRow key={idx}>
-                              <TableCell className="font-medium">{status.studentName}</TableCell>
-                              <TableCell>
-                                <span className={cn(
-                                  "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-                                  status.completed 
-                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
-                                    : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-                                )}>
-                                  {status.completed ? "✓ 완료" : "미완료"}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                {status.completedAt ? new Date(status.completedAt).toLocaleString() : "-"}
-                              </TableCell>
-                              <TableCell>{status.notes || "-"}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
             </TabsContent>
 
             <TabsContent value="grades">
