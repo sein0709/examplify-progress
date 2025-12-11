@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, BookOpen, ClipboardList, Award, Calendar, User, Clock, FileText, TrendingUp, LogOut, Paperclip, ExternalLink, Image as ImageIcon, PenLine } from "lucide-react";
+import { FilePreview } from "@/components/FilePreview";
 import { cn } from "@/lib/utils";
 import { MathInput } from "@/components/MathInput";
 import { MathDisplay } from "@/components/MathDisplay";
@@ -406,23 +407,11 @@ const Student = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1">
-                  {currentAssignment.file_type?.startsWith('image/') ? (
-                    <div className="space-y-2">
-                      <img 
-                        src={currentAssignment.file_url} 
-                        alt="Assignment reference" 
-                        className="w-full rounded-lg border shadow-md max-h-[600px] object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-[600px] border rounded-lg overflow-hidden">
-                      <iframe
-                        src={currentAssignment.file_url!}
-                        className="w-full h-full"
-                        title="Assignment Reference Material"
-                      />
-                    </div>
-                  )}
+                  <FilePreview 
+                    fileUrl={currentAssignment.file_url!}
+                    fileType={currentAssignment.file_type}
+                    maxHeight="600px"
+                  />
                 </CardContent>
               </Card>
             )}
@@ -630,25 +619,12 @@ const Student = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {currentAssignment.file_type?.startsWith('image/') ? (
-                  <div className="space-y-2">
-                    <img 
-                      src={currentAssignment.file_url} 
-                      alt="Assignment reference" 
-                      className="w-full rounded-lg border shadow-md max-h-96 object-contain"
-                    />
-                  </div>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => window.open(currentAssignment.file_url!, '_blank')}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    Open PDF Reference
-                    <ExternalLink className="h-4 w-4 ml-2" />
-                  </Button>
-                )}
+                <FilePreview 
+                  fileUrl={currentAssignment.file_url!}
+                  fileType={currentAssignment.file_type}
+                  maxHeight="400px"
+                  showDownloadButton
+                />
               </CardContent>
             </Card>
           )}
