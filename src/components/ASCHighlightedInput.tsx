@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 interface ASCHighlightedInputProps {
   value: string;
   onChange: (value: string) => void;
+  onEnter?: () => void;
   placeholder?: string;
   className?: string;
 }
@@ -92,7 +93,7 @@ function tokenizeASC(input: string): { type: 'prefix' | 'mcq' | 'frq' | 'frq-con
   return tokens;
 }
 
-export const ASCHighlightedInput = ({ value, onChange, placeholder, className }: ASCHighlightedInputProps) => {
+export const ASCHighlightedInput = ({ value, onChange, onEnter, placeholder, className }: ASCHighlightedInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -102,6 +103,13 @@ export const ASCHighlightedInput = ({ value, onChange, placeholder, className }:
       highlightRef.current.scrollLeft = scrollLeft;
     }
   }, [scrollLeft]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && onEnter) {
+      e.preventDefault();
+      onEnter();
+    }
+  };
 
   const tokens = value ? tokenizeASC(value) : [];
 
@@ -149,6 +157,7 @@ export const ASCHighlightedInput = ({ value, onChange, placeholder, className }:
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
         onScroll={(e) => setScrollLeft(e.currentTarget.scrollLeft)}
         placeholder={placeholder}
         className="w-full px-3 py-2 text-sm border border-input rounded-md bg-transparent text-transparent caret-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
