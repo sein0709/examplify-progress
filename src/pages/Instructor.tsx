@@ -28,6 +28,7 @@ import { MathDisplay } from "@/components/MathDisplay";
 import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
 import { AssignmentAnalyticsCard } from "@/components/AssignmentAnalyticsCard";
+import { StudentScoreDialog } from "@/components/StudentScoreDialog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 interface QuestionForm {
@@ -55,6 +56,7 @@ interface Assignment {
 interface Submission {
   id: string;
   assignment_id: string;
+  student_id: string;
   score: number | null;
   total_questions: number;
   submitted_at: string;
@@ -794,7 +796,12 @@ const Instructor = () => {
                       </TableHeader>
                       <TableBody>
                         {selectedAssignmentSubmissions.map(submission => <TableRow key={submission.id}>
-                            <TableCell>{submission.student.full_name}</TableCell>
+                            <TableCell>
+                              <StudentScoreDialog
+                                studentId={submission.student_id}
+                                studentName={submission.student.full_name}
+                              />
+                            </TableCell>
                             <TableCell>
                               {submission.score !== null ? `${submission.score}/${submission.total_questions}` : "대기중"}
                             </TableCell>
@@ -901,10 +908,16 @@ const Instructor = () => {
                         <TableBody>
                           {studentProgress.map(student => <TableRow key={student.studentId}>
                               <TableCell className="sticky left-0 bg-background font-medium">
-                                <div>
-                                  <div>{student.studentName}</div>
-                                  <div className="text-xs text-muted-foreground">{student.studentEmail}</div>
-                                </div>
+                                <StudentScoreDialog
+                                  studentId={student.studentId}
+                                  studentName={student.studentName}
+                                  trigger={
+                                    <Button variant="ghost" size="sm" className="h-auto p-0 hover:underline font-medium text-left flex flex-col items-start">
+                                      <span>{student.studentName}</span>
+                                      <span className="text-xs text-muted-foreground font-normal">{student.studentEmail}</span>
+                                    </Button>
+                                  }
+                                />
                               </TableCell>
                               {myAssignments.map(assignment => {
                           const assignmentData = student.assignments[assignment.id];
