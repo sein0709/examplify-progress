@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,7 @@ interface StudentAnswer {
   selected_answer: number | null;
   text_answer: string | null;
   is_correct: boolean | null;
+  points_earned: number | null;
   feedback: string | null;
   graded_at: string | null;
   question: {
@@ -54,7 +56,7 @@ export const FRQGradingDialog = ({
   const [frqAnswers, setFrqAnswers] = useState<StudentAnswer[]>([]);
   const [gradingState, setGradingState] = useState<{
     [answerId: string]: {
-      isCorrect: boolean | null;
+      pointsEarned: number | null;
       feedback: string;
     };
   }>({});
@@ -76,6 +78,7 @@ export const FRQGradingDialog = ({
           selected_answer,
           text_answer,
           is_correct,
+          points_earned,
           feedback,
           graded_at,
           question:questions!question_id(
@@ -101,7 +104,7 @@ export const FRQGradingDialog = ({
       const initialState: typeof gradingState = {};
       frqOnly.forEach((answer: any) => {
         initialState[answer.id] = {
-          isCorrect: answer.is_correct,
+          pointsEarned: answer.points_earned,
           feedback: answer.feedback || "",
         };
       });
@@ -113,12 +116,12 @@ export const FRQGradingDialog = ({
     }
   };
 
-  const handleGradeChange = (answerId: string, isCorrect: boolean | null) => {
+  const handlePointsChange = (answerId: string, points: number) => {
     setGradingState(prev => ({
       ...prev,
       [answerId]: {
         ...prev[answerId],
-        isCorrect,
+        pointsEarned: points,
       },
     }));
   };
@@ -141,11 +144,12 @@ export const FRQGradingDialog = ({
       // Update each FRQ answer
       for (const answer of frqAnswers) {
         const grading = gradingState[answer.id];
-        if (grading.isCorrect !== null) {
+        if (grading.pointsEarned !== null) {
           const { error } = await supabase
             .from("student_answers")
             .update({
-              is_correct: grading.isCorrect,
+              points_earned: grading.pointsEarned,
+              is_correct: grading.pointsEarned === 1, // Full credit = correct
               feedback: grading.feedback || null,
               graded_by: user.id,
               graded_at: new Date().toISOString(),
@@ -174,18 +178,27 @@ export const FRQGradingDialog = ({
       // Fetch all answers for this submission
       const { data: allAnswers, error: answersError } = await supabase
         .from("student_answers")
-        .select("is_correct")
+        .select("is_correct, points_earned, question:questions!question_id(question_type)")
         .eq("submission_id", submissionId);
 
       if (answersError) throw answersError;
 
-      // Count correct answers (including both MCQ and graded FRQ)
-      const correctCount = (allAnswers || []).filter(a => a.is_correct === true).length;
+      // Calculate total score:
+      // - MCQ: 1 point if correct, 0 otherwise
+      // - FRQ: use points_earned (0-1 scale)
+      let totalScore = 0;
+      (allAnswers || []).forEach((a: any) => {
+        if (a.question?.question_type === 'free_response') {
+          totalScore += a.points_earned || 0;
+        } else {
+          totalScore += a.is_correct ? 1 : 0;
+        }
+      });
 
-      // Update submission score
+      // Update submission score (round to handle floating point)
       const { error: updateError } = await supabase
         .from("submissions")
-        .update({ score: correctCount })
+        .update({ score: Math.round(totalScore * 100) / 100 })
         .eq("id", submissionId);
 
       if (updateError) throw updateError;
@@ -194,7 +207,7 @@ export const FRQGradingDialog = ({
     }
   };
 
-  const ungradedCount = frqAnswers.filter(a => gradingState[a.id]?.isCorrect === null).length;
+  const ungradedCount = frqAnswers.filter(a => gradingState[a.id]?.pointsEarned === null).length;
   const allGraded = ungradedCount === 0 && frqAnswers.length > 0;
 
   return (
@@ -226,12 +239,17 @@ export const FRQGradingDialog = ({
           </p>
         ) : (
           <div className="space-y-6">
-            {frqAnswers.map((answer, index) => (
+            {frqAnswers.map((answer, index) => {
+              const points = gradingState[answer.id]?.pointsEarned;
+              const pointsDisplay = points !== null ? Math.round(points * 100) : null;
+              
+              return (
               <Card key={answer.id} className={cn(
                 "border-2 transition-colors",
-                gradingState[answer.id]?.isCorrect === true && "border-green-500/50 bg-green-500/5",
-                gradingState[answer.id]?.isCorrect === false && "border-red-500/50 bg-red-500/5",
-                gradingState[answer.id]?.isCorrect === null && "border-purple-500/50 bg-purple-500/5"
+                points === 1 && "border-green-500/50 bg-green-500/5",
+                points !== null && points > 0 && points < 1 && "border-yellow-500/50 bg-yellow-500/5",
+                points === 0 && "border-red-500/50 bg-red-500/5",
+                points === null && "border-purple-500/50 bg-purple-500/5"
               )}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center justify-between">
@@ -239,9 +257,9 @@ export const FRQGradingDialog = ({
                       <Badge variant="secondary">문제 {answer.question.order_number + 1}</Badge>
                       <span>{answer.question.text}</span>
                     </div>
-                    {gradingState[answer.id]?.isCorrect !== null && (
-                      <Badge variant={gradingState[answer.id]?.isCorrect ? "default" : "destructive"}>
-                        {gradingState[answer.id]?.isCorrect ? "정답" : "오답"}
+                    {pointsDisplay !== null && (
+                      <Badge variant={points === 1 ? "default" : points === 0 ? "destructive" : "secondary"}>
+                        {pointsDisplay}%
                       </Badge>
                     )}
                   </CardTitle>
@@ -269,34 +287,56 @@ export const FRQGradingDialog = ({
                     </div>
                   )}
 
-                  {/* Grading Buttons */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">채점</Label>
-                    <div className="flex gap-2">
+                  {/* Partial Scoring Slider */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">점수: {pointsDisplay ?? 0}%</Label>
+                    <div className="flex items-center gap-4">
                       <Button
                         type="button"
-                        variant={gradingState[answer.id]?.isCorrect === true ? "default" : "outline"}
+                        variant="outline"
                         size="sm"
-                        onClick={() => handleGradeChange(answer.id, true)}
-                        className={cn(
-                          gradingState[answer.id]?.isCorrect === true && "bg-green-600 hover:bg-green-700"
-                        )}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        정답
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={gradingState[answer.id]?.isCorrect === false ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleGradeChange(answer.id, false)}
-                        className={cn(
-                          gradingState[answer.id]?.isCorrect === false && "bg-red-600 hover:bg-red-700"
-                        )}
+                        onClick={() => handlePointsChange(answer.id, 0)}
+                        className={cn(points === 0 && "bg-red-100 border-red-500")}
                       >
                         <XCircle className="h-4 w-4 mr-1" />
-                        오답
+                        0%
                       </Button>
+                      <div className="flex-1">
+                        <Slider
+                          value={[points !== null ? points * 100 : 0]}
+                          onValueChange={(value) => handlePointsChange(answer.id, value[0] / 100)}
+                          max={100}
+                          step={5}
+                          className="cursor-pointer"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePointsChange(answer.id, 1)}
+                        className={cn(points === 1 && "bg-green-100 border-green-500")}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        100%
+                      </Button>
+                    </div>
+                    <div className="flex justify-center gap-2">
+                      {[0.25, 0.5, 0.75].map((preset) => (
+                        <Button
+                          key={preset}
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePointsChange(answer.id, preset)}
+                          className={cn(
+                            "text-xs",
+                            points === preset && "bg-accent"
+                          )}
+                        >
+                          {preset * 100}%
+                        </Button>
+                      ))}
                     </div>
                   </div>
 
@@ -312,7 +352,7 @@ export const FRQGradingDialog = ({
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )})}
 
             {/* Summary and Save */}
             <div className="flex items-center justify-between pt-4 border-t">
