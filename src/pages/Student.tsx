@@ -60,6 +60,14 @@ interface Submission {
   };
 }
 
+interface StudentAnswerResult {
+  question_id: string;
+  is_correct: boolean | null;
+  points_earned: number | null;
+  feedback: string | null;
+  graded_at: string | null;
+}
+
 const Student = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -72,6 +80,7 @@ const Student = () => {
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionAnswers, setSubmissionAnswers] = useState<StudentAnswerResult[]>([]);
 
   useEffect(() => {
     fetchAssignments();
@@ -308,6 +317,16 @@ const Student = () => {
           ...currentAssignment,
           questions: questionsWithAnswers as Question[],
         });
+      }
+
+      // Fetch student answers with grading info
+      const { data: savedAnswers } = await supabase
+        .from("student_answers")
+        .select("question_id, is_correct, points_earned, feedback, graded_at")
+        .eq("submission_id", submission.id);
+      
+      if (savedAnswers) {
+        setSubmissionAnswers(savedAnswers as StudentAnswerResult[]);
       }
 
       toast.success("Assignment submitted successfully!");
@@ -645,12 +664,27 @@ const Student = () => {
                 const selectedAnswer = selectedAnswers[index];
                 const textAnswer = textAnswers[index];
                 const isCorrect = !isFreeResponse && selectedAnswer === question.correct_answer;
+                
+                // Get submission answer for FRQ grading info
+                const submissionAnswer = submissionAnswers.find(a => a.question_id === question.id);
+                const frqPoints = submissionAnswer?.points_earned;
+                const frqGraded = frqPoints !== null && frqPoints !== undefined;
+                const frqFeedback = submissionAnswer?.feedback;
+
+                // Determine FRQ card styling based on grading status
+                const frqBorderClass = frqGraded 
+                  ? frqPoints === 1 
+                    ? "border-green-500/50 bg-green-500/5"
+                    : frqPoints === 0 
+                      ? "border-destructive/50 bg-destructive/5"
+                      : "border-yellow-500/50 bg-yellow-500/5"
+                  : "border-purple-500/50 bg-purple-500/5";
 
                 return (
                   <Card key={question.id} className={cn(
                     "border-2 transition-all duration-300 hover:shadow-lg",
                     isFreeResponse 
-                      ? "border-purple-500/50 bg-purple-500/5" 
+                      ? frqBorderClass
                       : isCorrect 
                         ? "border-green-500/50 bg-green-500/5" 
                         : "border-destructive/50 bg-destructive/5"
@@ -658,9 +692,26 @@ const Student = () => {
                     <CardHeader>
                       <div className="flex items-start gap-3">
                         {isFreeResponse ? (
-                          <div className="h-6 w-6 rounded-full bg-purple-500 flex items-center justify-center">
-                            <PenLine className="h-3 w-3 text-white" />
-                          </div>
+                          frqGraded ? (
+                            frqPoints === 1 ? (
+                              <div className="relative">
+                                <div className="absolute inset-0 blur-lg bg-green-500/30" />
+                                <CheckCircle2 className="h-6 w-6 text-green-500 relative" />
+                              </div>
+                            ) : frqPoints === 0 ? (
+                              <div className="h-6 w-6 rounded-full bg-destructive flex items-center justify-center">
+                                <span className="text-sm text-destructive-foreground font-bold">✕</span>
+                              </div>
+                            ) : (
+                              <div className="h-6 w-6 rounded-full bg-yellow-500 flex items-center justify-center">
+                                <span className="text-xs text-white font-bold">{Math.round(frqPoints * 100)}%</span>
+                              </div>
+                            )
+                          ) : (
+                            <div className="h-6 w-6 rounded-full bg-purple-500 flex items-center justify-center">
+                              <PenLine className="h-3 w-3 text-white" />
+                            </div>
+                          )
                         ) : isCorrect ? (
                           <div className="relative">
                             <div className="absolute inset-0 blur-lg bg-green-500/30" />
@@ -675,9 +726,26 @@ const Student = () => {
                           <CardTitle className="text-lg flex items-center gap-2">
                             문제 {index + 1}
                             {isFreeResponse ? (
-                              <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
-                                서술형
-                              </Badge>
+                              <>
+                                <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                                  서술형
+                                </Badge>
+                                {frqGraded ? (
+                                  <Badge 
+                                    variant={frqPoints === 1 ? "default" : frqPoints === 0 ? "destructive" : "secondary"}
+                                    className={cn(
+                                      frqPoints === 1 && "bg-green-500",
+                                      frqPoints !== null && frqPoints > 0 && frqPoints < 1 && "bg-yellow-500 text-white"
+                                    )}
+                                  >
+                                    {Math.round(frqPoints! * 100)}% ({frqPoints} 점)
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-purple-600 border-purple-400">
+                                    채점 대기중
+                                  </Badge>
+                                )}
+                              </>
                             ) : isCorrect ? (
                               <span className="text-xs bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">정답</span>
                             ) : null}
@@ -701,6 +769,15 @@ const Student = () => {
                             <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
                               <p className="text-sm font-semibold mb-2 text-green-700 dark:text-green-300">모범답안:</p>
                               <MathDisplay latex={question.model_answer} block />
+                            </div>
+                          )}
+                          {frqFeedback && (
+                            <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                              <p className="text-sm font-semibold mb-2 text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                                <BookOpen className="h-4 w-4" />
+                                강사 피드백:
+                              </p>
+                              <p className="text-sm">{frqFeedback}</p>
                             </div>
                           )}
                         </div>
