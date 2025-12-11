@@ -121,6 +121,9 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
   const [analyticsInstructorFilter, setAnalyticsInstructorFilter] = useState("all-instructors");
   const [analyticsSortOrder, setAnalyticsSortOrder] = useState("newest");
   
+  // Grades Search State
+  const [gradesSearch, setGradesSearch] = useState("");
+  
   // Filtered assignments for analytics
   const filteredAnalyticsAssignments = assignments.filter(assignment => {
     const matchesSearch = assignment.title.toLowerCase().includes(analyticsSearch.toLowerCase());
@@ -1122,14 +1125,23 @@ setQuestions([{
                     학생 이름을 클릭하여 상세 성적을 확인하세요
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  <div className="relative max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="학생 검색..."
+                      className="pl-9"
+                      value={gradesSearch}
+                      onChange={(e) => setGradesSearch(e.target.value)}
+                    />
+                  </div>
                   {(() => {
                     const uniqueStudents = Array.from(
                       new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
-                    );
+                    ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()));
                     return uniqueStudents.length === 0 ? (
                       <p className="text-center text-muted-foreground py-8">
-                        학생이 없습니다
+                        {submissions.length === 0 ? "학생이 없습니다" : "검색 결과가 없습니다"}
                       </p>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
