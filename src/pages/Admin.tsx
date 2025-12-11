@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info, ClipboardList, BookOpen } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -42,12 +42,20 @@ interface Assignment {
   description: string | null;
   due_date: string | null;
   created_at: string;
+  assignment_type: string;
   instructor: {
     full_name: string;
   };
   questions: {
     count: number;
   }[];
+}
+
+interface CompletionStatus {
+  studentName: string;
+  completed: boolean;
+  completedAt: string | null;
+  notes: string | null;
 }
 interface Submission {
   id: string;
@@ -108,6 +116,8 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
   const [isResubmittable, setIsResubmittable] = useState(false);
   const [maxAttempts, setMaxAttempts] = useState<number>(1);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [assignmentType, setAssignmentType] = useState<"quiz" | "reading">("quiz");
+  const [completionStatus, setCompletionStatus] = useState<{ assignmentTitle: string; statuses: CompletionStatus[] } | null>(null);
   const fetchUsers = async () => {
     try {
       const {
@@ -152,6 +162,51 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
       setAssignments(data || []);
     } catch (error: any) {
       toast.error("과제 조회 실패: " + error.message);
+    }
+  };
+
+  const fetchCompletionStatus = async (assignmentId: string, assignmentTitle: string) => {
+    try {
+      // Get all students assigned to this assignment
+      const { data: studentAssignments, error: saError } = await supabase
+        .from("student_assignments")
+        .select("student_id")
+        .eq("assignment_id", assignmentId);
+      if (saError) throw saError;
+
+      const studentIds = studentAssignments?.map(sa => sa.student_id) || [];
+      if (studentIds.length === 0) {
+        setCompletionStatus({ assignmentTitle, statuses: [] });
+        return;
+      }
+
+      // Get student profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", studentIds);
+      if (profilesError) throw profilesError;
+
+      // Get completions for this assignment
+      const { data: completions, error: completionsError } = await supabase
+        .from("assignment_completions")
+        .select("*")
+        .eq("assignment_id", assignmentId);
+      if (completionsError) throw completionsError;
+
+      const statuses: CompletionStatus[] = (profiles || []).map(profile => {
+        const completion = completions?.find(c => c.student_id === profile.id);
+        return {
+          studentName: profile.full_name || "Unknown",
+          completed: !!completion,
+          completedAt: completion?.completed_at || null,
+          notes: completion?.notes || null
+        };
+      });
+
+      setCompletionStatus({ assignmentTitle, statuses });
+    } catch (error: any) {
+      toast.error("완료 현황 조회 실패: " + error.message);
     }
   };
   const fetchSubmissions = async () => {
@@ -410,16 +465,19 @@ const addQuestion = () => {
       toast.error("과제 제목을 입력해주세요");
       return;
     }
-for (let i = 0; i < questions.length; i++) {
-      if (!questions[i].text.trim()) {
-        toast.error(`문제 ${i + 1}의 내용을 입력해주세요`);
-        return;
-      }
-      if (questions[i].questionType === "multiple_choice") {
-        for (let j = 0; j < 5; j++) {
-          if (!questions[i].options[j].trim()) {
-            toast.error(`문제 ${i + 1}, 선택지 ${j + 1}을 입력해주세요`);
-            return;
+    // Only validate questions for quiz type
+    if (assignmentType === "quiz") {
+      for (let i = 0; i < questions.length; i++) {
+        if (!questions[i].text.trim()) {
+          toast.error(`문제 ${i + 1}의 내용을 입력해주세요`);
+          return;
+        }
+        if (questions[i].questionType === "multiple_choice") {
+          for (let j = 0; j < 5; j++) {
+            if (!questions[i].options[j].trim()) {
+              toast.error(`문제 ${i + 1}, 선택지 ${j + 1}을 입력해주세요`);
+              return;
+            }
           }
         }
       }
@@ -448,23 +506,27 @@ for (let i = 0; i < questions.length; i++) {
         file_url: fileUrl,
         file_type: fileType,
         is_resubmittable: isResubmittable,
-        max_attempts: isResubmittable ? maxAttempts : null
+        max_attempts: isResubmittable ? maxAttempts : null,
+        assignment_type: assignmentType
       }).select().single();
       if (assignmentError) throw assignmentError;
-const questionsToInsert = questions.map((q, index) => ({
-        assignment_id: assignment.id,
-        text: q.text,
-        options: q.questionType === "multiple_choice" ? q.options : [],
-        correct_answer: q.questionType === "multiple_choice" ? q.correctAnswer : null,
-        explanation: q.explanation || null,
-        order_number: index,
-        question_type: q.questionType,
-        model_answer: q.questionType === "free_response" ? q.modelAnswer || null : null
-      }));
-      const {
-        error: questionsError
-      } = await supabase.from("questions").insert(questionsToInsert);
-      if (questionsError) throw questionsError;
+      // Only insert questions for quiz type assignments
+      if (assignmentType === "quiz") {
+        const questionsToInsert = questions.map((q, index) => ({
+          assignment_id: assignment.id,
+          text: q.text,
+          options: q.questionType === "multiple_choice" ? q.options : [],
+          correct_answer: q.questionType === "multiple_choice" ? q.correctAnswer : null,
+          explanation: q.explanation || null,
+          order_number: index,
+          question_type: q.questionType,
+          model_answer: q.questionType === "free_response" ? q.modelAnswer || null : null
+        }));
+        const {
+          error: questionsError
+        } = await supabase.from("questions").insert(questionsToInsert);
+        if (questionsError) throw questionsError;
+      }
 
       // Insert student assignments if any students selected
       if (selectedStudentIds.length > 0) {
@@ -486,6 +548,7 @@ const questionsToInsert = questions.map((q, index) => ({
       setMaxAttempts(1);
       setUploadedFile(null);
       setSelectedStudentIds([]);
+      setAssignmentType("quiz");
 setQuestions([{
         text: "",
         options: ["", "", "", "", ""],
@@ -763,6 +826,26 @@ setQuestions([{
                       </div>
 
                       <div className="space-y-2">
+                        <Label>과제 유형</Label>
+                        <RadioGroup value={assignmentType} onValueChange={(value) => setAssignmentType(value as "quiz" | "reading")} className="flex gap-4">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="quiz" id="type-quiz" />
+                            <Label htmlFor="type-quiz" className="flex items-center gap-1 cursor-pointer">
+                              <ClipboardList className="h-4 w-4" />
+                              퀴즈
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="reading" id="type-reading" />
+                            <Label htmlFor="type-reading" className="flex items-center gap-1 cursor-pointer">
+                              <BookOpen className="h-4 w-4" />
+                              읽기 과제
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div className="space-y-2">
                         <Label htmlFor="title">과제 제목</Label>
                         <Input id="title" placeholder="과제 제목을 입력하세요" value={assignmentTitle} onChange={e => setAssignmentTitle(e.target.value)} />
                       </div>
@@ -806,22 +889,24 @@ setQuestions([{
                         </p>
                       </div>
 
-                      <div className="space-y-4 border-t pt-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox id="resubmittable" checked={isResubmittable} onCheckedChange={checked => setIsResubmittable(checked as boolean)} />
-                          <Label htmlFor="resubmittable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            학생들이 이 과제를 재제출할 수 있도록 허용
-                          </Label>
+                      {assignmentType === "quiz" && (
+                        <div className="space-y-4 border-t pt-4">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="resubmittable" checked={isResubmittable} onCheckedChange={checked => setIsResubmittable(checked as boolean)} />
+                            <Label htmlFor="resubmittable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              학생들이 이 과제를 재제출할 수 있도록 허용
+                            </Label>
+                          </div>
+                          
+                          {isResubmittable && <div className="space-y-2 pl-6">
+                              <Label htmlFor="maxAttempts">최대 시도 횟수</Label>
+                              <Input id="maxAttempts" type="number" min="1" value={maxAttempts} onChange={e => setMaxAttempts(Math.max(1, parseInt(e.target.value) || 1))} placeholder="시도 횟수를 입력하세요" />
+                              <p className="text-xs text-muted-foreground">
+                                학생들은 이 과제를 최대 {maxAttempts}회까지 제출할 수 있습니다
+                              </p>
+                            </div>}
                         </div>
-                        
-                        {isResubmittable && <div className="space-y-2 pl-6">
-                            <Label htmlFor="maxAttempts">최대 시도 횟수</Label>
-                            <Input id="maxAttempts" type="number" min="1" value={maxAttempts} onChange={e => setMaxAttempts(Math.max(1, parseInt(e.target.value) || 1))} placeholder="시도 횟수를 입력하세요" />
-                            <p className="text-xs text-muted-foreground">
-                              학생들은 이 과제를 최대 {maxAttempts}회까지 제출할 수 있습니다
-                            </p>
-                          </div>}
-                      </div>
+                      )}
 
                       <Button onClick={handleCreateAssignment} className="w-full" disabled={submitting}>
                         {submitting ? <>
@@ -832,160 +917,164 @@ setQuestions([{
                     </CardContent>
                   </Card>
 
-                  {/* Column 2 - Bulk Question Input */}
-                  <div className="h-fit">
-                    <BulkQuestionInput onAddQuestions={newQuestions => {
-                  setQuestions(prev => {
-                    const hasContent = prev.length > 0 && (prev[0].text || prev[0].options.some(o => o));
-                    if (hasContent) {
-                      return [...prev, ...newQuestions];
-                    }
-                    return newQuestions;
-                  });
-                }} />
-                  </div>
+                  {/* Column 2 - Bulk Question Input (Quiz only) */}
+                  {assignmentType === "quiz" && (
+                    <div className="h-fit">
+                      <BulkQuestionInput onAddQuestions={newQuestions => {
+                    setQuestions(prev => {
+                      const hasContent = prev.length > 0 && (prev[0].text || prev[0].options.some(o => o));
+                      if (hasContent) {
+                        return [...prev, ...newQuestions];
+                      }
+                      return newQuestions;
+                    });
+                  }} />
+                    </div>
+                  )}
 
                   {/* Column 3 - Student Selector */}
                   <StudentSelector selectedStudentIds={selectedStudentIds} onSelectionChange={setSelectedStudentIds} />
                 </div>
 
-                {/* Bottom - Questions */}
-                <Card>
-                    <CardHeader variant="accent">
-                      <CardTitle>문제</CardTitle>
-                      <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mt-2">
-                        {questions.map((question, qIndex) => {
-                    const hasContent = question.text || question.options.some(o => o);
-                    return <div key={qIndex} onClick={() => {
-                      const element = document.getElementById(`admin-question-form-${qIndex}`);
-                      element?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                      });
-                    }} className={cn("group relative aspect-square rounded-xl cursor-pointer", "border-2 transition-all duration-300 ease-out", "hover:scale-105 hover:shadow-lg hover:-translate-y-1", hasContent ? "bg-gradient-to-br from-accent/20 to-accent/5 border-accent/40 hover:border-accent hover:shadow-accent/20" : "bg-gradient-to-br from-muted/50 to-muted/20 border-border hover:border-accent/60")}>
-                              <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
-                                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mb-2", "text-lg font-bold transition-colors duration-300", hasContent ? "bg-accent/30 text-accent-foreground group-hover:bg-accent/50" : "bg-muted text-muted-foreground group-hover:bg-accent/20")}>
-                                  {qIndex + 1}
-                                </div>
-                                {question.text ? <p className="text-xs text-center text-muted-foreground line-clamp-2 px-1">
-                                    {question.text}
-                                  </p> : <p className="text-xs text-muted-foreground/60 italic">빈 문제</p>}
-                              </div>
-                              {hasContent && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
-                            </div>;
-                  })}
-                      </div>
-
-                      <div className="space-y-6">
-                        {questions.map((question, qIndex) => <Card key={qIndex} id={`admin-question-form-${qIndex}`} className="border-2 border-accent/30 hover:border-accent/50 transition-colors">
-                            <CardHeader className="bg-gradient-to-r from-accent/10 to-transparent">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-lg shadow-sm">
+                {/* Bottom - Questions (Quiz only) */}
+                {assignmentType === "quiz" && (
+                  <Card>
+                      <CardHeader variant="accent">
+                        <CardTitle>문제</CardTitle>
+                        <CardDescription>과제에 문제를 추가하고 설정하세요</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 mt-2">
+                          {questions.map((question, qIndex) => {
+                      const hasContent = question.text || question.options.some(o => o);
+                      return <div key={qIndex} onClick={() => {
+                        const element = document.getElementById(`admin-question-form-${qIndex}`);
+                        element?.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'center'
+                        });
+                      }} className={cn("group relative aspect-square rounded-xl cursor-pointer", "border-2 transition-all duration-300 ease-out", "hover:scale-105 hover:shadow-lg hover:-translate-y-1", hasContent ? "bg-gradient-to-br from-accent/20 to-accent/5 border-accent/40 hover:border-accent hover:shadow-accent/20" : "bg-gradient-to-br from-muted/50 to-muted/20 border-border hover:border-accent/60")}>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center p-3">
+                                  <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mb-2", "text-lg font-bold transition-colors duration-300", hasContent ? "bg-accent/30 text-accent-foreground group-hover:bg-accent/50" : "bg-muted text-muted-foreground group-hover:bg-accent/20")}>
                                     {qIndex + 1}
                                   </div>
-                                  <CardTitle>문제 {qIndex + 1}</CardTitle>
+                                  {question.text ? <p className="text-xs text-center text-muted-foreground line-clamp-2 px-1">
+                                      {question.text}
+                                    </p> : <p className="text-xs text-muted-foreground/60 italic">빈 문제</p>}
                                 </div>
-                                {questions.length > 1 && <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => removeQuestion(qIndex)}>
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    삭제
-                                  </Button>}
-                              </div>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <div className="space-y-2">
-                                <Label>문제 유형</Label>
-                                <div className="flex gap-2">
-                                  <Button
-                                    type="button"
-                                    variant={question.questionType === "multiple_choice" ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => updateQuestion(qIndex, "questionType", "multiple_choice")}
-                                  >
-                                    객관식
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant={question.questionType === "free_response" ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => updateQuestion(qIndex, "questionType", "free_response")}
-                                  >
-                                    서술형
-                                  </Button>
-                                </div>
-                              </div>
+                                {hasContent && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+                              </div>;
+                    })}
+                        </div>
 
-                              <div className="space-y-2">
-                                <Label>문제 텍스트</Label>
-                                <Input placeholder="문제 텍스트를 입력하세요" value={question.text} onChange={e => updateQuestion(qIndex, "text", e.target.value)} />
-                              </div>
-
-                              {question.questionType === "multiple_choice" ? (
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                                    <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                      라디오 버튼을 클릭하여 정답을 표시하세요
-                                    </Label>
+                        <div className="space-y-6">
+                          {questions.map((question, qIndex) => <Card key={qIndex} id={`admin-question-form-${qIndex}`} className="border-2 border-accent/30 hover:border-accent/50 transition-colors">
+                              <CardHeader className="bg-gradient-to-r from-accent/10 to-transparent">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-lg shadow-sm">
+                                      {qIndex + 1}
+                                    </div>
+                                    <CardTitle>문제 {qIndex + 1}</CardTitle>
                                   </div>
-                                  <RadioGroup value={question.correctAnswer.toString()} onValueChange={value => updateQuestion(qIndex, "correctAnswer", parseInt(value))}>
-                                    {question.options.map((option, oIndex) => <div key={oIndex} className="flex items-center gap-2">
-                                        <RadioGroupItem value={oIndex.toString()} id={`admin-q${qIndex}-o${oIndex}`} className="shrink-0" />
-                                        <div className="flex-1">
-                                          <Input placeholder={`선택지 ${oIndex + 1}`} value={option} onChange={e => updateOption(qIndex, oIndex, e.target.value)} />
+                                  {questions.length > 1 && <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => removeQuestion(qIndex)}>
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      삭제
+                                    </Button>}
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label>문제 유형</Label>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      type="button"
+                                      variant={question.questionType === "multiple_choice" ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => updateQuestion(qIndex, "questionType", "multiple_choice")}
+                                    >
+                                      객관식
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant={question.questionType === "free_response" ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => updateQuestion(qIndex, "questionType", "free_response")}
+                                    >
+                                      서술형
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label>문제 텍스트</Label>
+                                  <Input placeholder="문제 텍스트를 입력하세요" value={question.text} onChange={e => updateQuestion(qIndex, "text", e.target.value)} />
+                                </div>
+
+                                {question.questionType === "multiple_choice" ? (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                                      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                                      <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                        라디오 버튼을 클릭하여 정답을 표시하세요
+                                      </Label>
+                                    </div>
+                                    <RadioGroup value={question.correctAnswer.toString()} onValueChange={value => updateQuestion(qIndex, "correctAnswer", parseInt(value))}>
+                                      {question.options.map((option, oIndex) => <div key={oIndex} className="flex items-center gap-2">
+                                          <RadioGroupItem value={oIndex.toString()} id={`admin-q${qIndex}-o${oIndex}`} className="shrink-0" />
+                                          <div className="flex-1">
+                                            <Input placeholder={`선택지 ${oIndex + 1}`} value={option} onChange={e => updateOption(qIndex, oIndex, e.target.value)} />
+                                          </div>
+                                          {question.correctAnswer === oIndex && <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
+                                              ✓ 정답
+                                            </span>}
+                                        </div>)}
+                                    </RadioGroup>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-md">
+                                      <Info className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                      <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                                        서술형 문제는 강사가 수동으로 채점해야 합니다
+                                      </Label>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>모범 답안 (선택사항)</Label>
+                                      <MathInput
+                                        value={question.modelAnswer}
+                                        onChange={(value) => updateQuestion(qIndex, "modelAnswer", value)}
+                                        placeholder="채점 기준이 되는 모범 답안을 입력하세요..."
+                                      />
+                                      {question.modelAnswer && (
+                                        <div className="p-3 bg-muted rounded-md">
+                                          <Label className="text-xs text-muted-foreground mb-1 block">미리보기:</Label>
+                                          <MathDisplay latex={question.modelAnswer} />
                                         </div>
-                                        {question.correctAnswer === oIndex && <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
-                                            ✓ 정답
-                                          </span>}
-                                      </div>)}
-                                  </RadioGroup>
-                                </div>
-                              ) : (
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-md">
-                                    <Info className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                                    <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                                      서술형 문제는 강사가 수동으로 채점해야 합니다
-                                    </Label>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="space-y-2">
-                                    <Label>모범 답안 (선택사항)</Label>
-                                    <MathInput
-                                      value={question.modelAnswer}
-                                      onChange={(value) => updateQuestion(qIndex, "modelAnswer", value)}
-                                      placeholder="채점 기준이 되는 모범 답안을 입력하세요..."
-                                    />
-                                    {question.modelAnswer && (
-                                      <div className="p-3 bg-muted rounded-md">
-                                        <Label className="text-xs text-muted-foreground mb-1 block">미리보기:</Label>
-                                        <MathDisplay latex={question.modelAnswer} />
-                                      </div>
-                                    )}
-                                  </div>
+                                )}
+
+                                <div className="space-y-2">
+                                  <Label htmlFor={`admin-explanation-${qIndex}`}>설명 (선택사항)</Label>
+                                  <Textarea id={`admin-explanation-${qIndex}`} placeholder="이 정답이 맞는 이유를 설명하세요..." value={question.explanation} onChange={e => updateQuestion(qIndex, "explanation", e.target.value)} rows={3} />
                                 </div>
-                              )}
+                              </CardContent>
+                            </Card>)}
+                        </div>
 
-                              <div className="space-y-2">
-                                <Label htmlFor={`admin-explanation-${qIndex}`}>설명 (선택사항)</Label>
-                                <Textarea id={`admin-explanation-${qIndex}`} placeholder="이 정답이 맞는 이유를 설명하세요..." value={question.explanation} onChange={e => updateQuestion(qIndex, "explanation", e.target.value)} rows={3} />
-                              </div>
-                            </CardContent>
-                          </Card>)}
-                      </div>
-
-                      <Button onClick={addQuestion} variant="outline" className="w-full">
-                        <Plus className="h-4 w-4 mr-2" />
-                        문제 추가
-                      </Button>
-                    </CardContent>
-                  </Card>
+                        <Button onClick={addQuestion} variant="outline" className="w-full">
+                          <Plus className="h-4 w-4 mr-2" />
+                          문제 추가
+                        </Button>
+                      </CardContent>
+                    </Card>
+                )}
               </div>
             </TabsContent>
 
-            <TabsContent value="assignments">
+            <TabsContent value="assignments" className="space-y-6">
               <Card>
                 <CardHeader variant="accent">
                   <CardTitle>전체 과제</CardTitle>
@@ -1000,8 +1089,9 @@ setQuestions([{
                       <TableHeader>
                         <TableRow>
                           <TableHead>제목</TableHead>
+                          <TableHead>유형</TableHead>
                           <TableHead>강사</TableHead>
-                          <TableHead>질문 수</TableHead>
+                          <TableHead>문제/완료</TableHead>
                           <TableHead>마감일</TableHead>
                           <TableHead>생성일</TableHead>
                           <TableHead>작업</TableHead>
@@ -1012,8 +1102,34 @@ setQuestions([{
                             <TableCell className="font-medium">
                               {assignment.title}
                             </TableCell>
+                            <TableCell>
+                              <span className={cn(
+                                "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                                assignment.assignment_type === "reading" 
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" 
+                                  : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                              )}>
+                                {assignment.assignment_type === "reading" ? (
+                                  <><BookOpen className="h-3 w-3" /> 읽기 과제</>
+                                ) : (
+                                  <><ClipboardList className="h-3 w-3" /> 퀴즈</>
+                                )}
+                              </span>
+                            </TableCell>
                             <TableCell>{assignment.instructor.full_name}</TableCell>
-                            <TableCell>{assignment.questions[0]?.count || 0}</TableCell>
+                            <TableCell>
+                              {assignment.assignment_type === "reading" ? (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => fetchCompletionStatus(assignment.id, assignment.title)}
+                                >
+                                  완료 현황 보기
+                                </Button>
+                              ) : (
+                                assignment.questions[0]?.count || 0
+                              )}
+                            </TableCell>
                             <TableCell>
                               {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : "마감일 없음"}
                             </TableCell>
@@ -1030,6 +1146,55 @@ setQuestions([{
                     </Table>}
                 </CardContent>
               </Card>
+
+              {/* Completion Status Display */}
+              {completionStatus && (
+                <Card>
+                  <CardHeader variant="accent">
+                    <CardTitle>완료 현황: {completionStatus.assignmentTitle}</CardTitle>
+                    <CardDescription>
+                      {completionStatus.statuses.filter(s => s.completed).length}/{completionStatus.statuses.length} 학생 완료
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {completionStatus.statuses.length === 0 ? (
+                      <p className="text-center text-muted-foreground py-4">배정된 학생이 없습니다</p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>학생</TableHead>
+                            <TableHead>상태</TableHead>
+                            <TableHead>완료일</TableHead>
+                            <TableHead>메모</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {completionStatus.statuses.map((status, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="font-medium">{status.studentName}</TableCell>
+                              <TableCell>
+                                <span className={cn(
+                                  "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                                  status.completed 
+                                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
+                                    : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                                )}>
+                                  {status.completed ? "✓ 완료" : "미완료"}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {status.completedAt ? new Date(status.completedAt).toLocaleString() : "-"}
+                              </TableCell>
+                              <TableCell>{status.notes || "-"}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="grades">
