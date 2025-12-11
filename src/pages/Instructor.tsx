@@ -770,7 +770,7 @@ const Instructor = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {assignment.assignment_type === 'quiz' ? <Button variant="outline" size="sm" onClick={() => fetchSubmissions(assignment.id)} className="border-primary bg-accent text-primary-foreground">
+                            {assignment.assignment_type === 'quiz' ? <Button variant="outline" size="sm" onClick={() => fetchSubmissions(assignment.id)} className="text-primary-foreground bg-primary border-muted">
                                 {assignment.submissions[0]?.count || 0} 제출 ({assignment.questions[0]?.count || 0} 문제)
                               </Button> : <Button variant="outline" size="sm" onClick={() => fetchCompletionStatus(assignment.id)} className="text-primary-foreground bg-primary border-accent">
                                 완료 현황 보기
