@@ -25,15 +25,20 @@ import {
 import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { BulkQuestionInput } from "@/components/BulkQuestionInput";
+import { BulkQuestionInput, ParsedQuestion } from "@/components/BulkQuestionInput";
 import { StudentAssignmentManager } from "@/components/StudentAssignmentManager";
 import { StudentSelector } from "@/components/StudentSelector";
+import { MathInput } from "@/components/MathInput";
+import { MathDisplay } from "@/components/MathDisplay";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+
 interface QuestionForm {
   text: string;
   options: string[];
-  correctAnswer: number;
+  correctAnswer: number | null;
   explanation: string;
+  questionType: 'multiple_choice' | 'free_response';
+  modelAnswer: string;
 }
 
 interface Assignment {
@@ -80,7 +85,7 @@ const Instructor = () => {
   const [isResubmittable, setIsResubmittable] = useState(false);
   const [maxAttempts, setMaxAttempts] = useState<number>(1);
   const [questions, setQuestions] = useState<QuestionForm[]>([
-    { text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "" },
+    { text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "", questionType: 'multiple_choice', modelAnswer: "" },
   ]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -233,12 +238,27 @@ const Instructor = () => {
     }
   };
 
-  const addQuestion = () => {
-    setQuestions([...questions, { text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "" }]);
+  const addQuestion = (type: 'multiple_choice' | 'free_response' = 'multiple_choice') => {
+    setQuestions([...questions, { 
+      text: "", 
+      options: ["1", "2", "3", "4", "5"], 
+      correctAnswer: type === 'multiple_choice' ? 0 : null, 
+      explanation: "", 
+      questionType: type,
+      modelAnswer: ""
+    }]);
   };
 
-  const addBulkQuestions = (bulkQuestions: QuestionForm[]) => {
-    setQuestions([...questions, ...bulkQuestions]);
+  const addBulkQuestions = (bulkQuestions: ParsedQuestion[]) => {
+    const newQuestions: QuestionForm[] = bulkQuestions.map(q => ({
+      text: q.text,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation,
+      questionType: q.questionType,
+      modelAnswer: q.modelAnswer,
+    }));
+    setQuestions([...questions, ...newQuestions]);
     toast.success(`${bulkQuestions.length}개 문제가 추가되었습니다`);
   };
 
@@ -323,10 +343,12 @@ const Instructor = () => {
         toast.error(`문제 ${i + 1}의 텍스트가 필요합니다`);
         return;
       }
-      for (let j = 0; j < 4; j++) {
-        if (!questions[i].options[j].trim()) {
-          toast.error(`문제 ${i + 1}, 선택지 ${j + 1}이(가) 필요합니다`);
-          return;
+      if (questions[i].questionType === 'multiple_choice') {
+        for (let j = 0; j < 4; j++) {
+          if (!questions[i].options[j].trim()) {
+            toast.error(`문제 ${i + 1}, 선택지 ${j + 1}이(가) 필요합니다`);
+            return;
+          }
         }
       }
     }
@@ -382,9 +404,11 @@ const Instructor = () => {
         assignment_id: assignment.id,
         text: q.text,
         options: q.options,
-        correct_answer: q.correctAnswer,
+        correct_answer: q.questionType === 'multiple_choice' ? q.correctAnswer : null,
         explanation: q.explanation || null,
         order_number: index,
+        question_type: q.questionType,
+        model_answer: q.questionType === 'free_response' ? q.modelAnswer : null,
       }));
 
       const { error: questionsError } = await supabase
@@ -411,7 +435,7 @@ const Instructor = () => {
       setMaxAttempts(1);
       setUploadedFile(null);
       setSelectedStudentIds([]);
-      setQuestions([{ text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "" }]);
+      setQuestions([{ text: "", options: ["1", "2", "3", "4", "5"], correctAnswer: 0, explanation: "", questionType: 'multiple_choice', modelAnswer: "" }]);
       fetchMyAssignments();
     } catch (error: any) {
       toast.error("과제 생성 실패: " + error.message);
@@ -674,6 +698,12 @@ const Instructor = () => {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant={question.questionType === 'multiple_choice' ? 'default' : 'secondary'}>
+                              {question.questionType === 'multiple_choice' ? '객관식' : '서술형'}
+                            </Badge>
+                          </div>
+
                           <div className="space-y-2">
                             <Label>문제 텍스트</Label>
                             <Input
@@ -683,42 +713,59 @@ const Instructor = () => {
                             />
                           </div>
 
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-                              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                              <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                                라디오 버튼을 클릭하여 정답을 표시하세요
-                              </Label>
-                            </div>
-                            <RadioGroup
-                              value={question.correctAnswer.toString()}
-                              onValueChange={(value) =>
-                                updateQuestion(qIndex, "correctAnswer", parseInt(value))
-                              }
-                            >
-                              {question.options.map((option, oIndex) => (
-                                <div key={oIndex} className="flex items-center gap-2">
-                                  <RadioGroupItem
-                                    value={oIndex.toString()}
-                                    id={`q${qIndex}-o${oIndex}`}
-                                    className="shrink-0"
-                                  />
-                                  <div className="flex-1">
-                                    <Input
-                                      placeholder={`선택지 ${oIndex + 1}`}
-                                      value={option}
-                                      onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                          {question.questionType === 'multiple_choice' ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                                <Label className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                                  라디오 버튼을 클릭하여 정답을 표시하세요
+                                </Label>
+                              </div>
+                              <RadioGroup
+                                value={(question.correctAnswer ?? 0).toString()}
+                                onValueChange={(value) =>
+                                  updateQuestion(qIndex, "correctAnswer", parseInt(value))
+                                }
+                              >
+                                {question.options.map((option, oIndex) => (
+                                  <div key={oIndex} className="flex items-center gap-2">
+                                    <RadioGroupItem
+                                      value={oIndex.toString()}
+                                      id={`q${qIndex}-o${oIndex}`}
+                                      className="shrink-0"
                                     />
+                                    <div className="flex-1">
+                                      <Input
+                                        placeholder={`선택지 ${oIndex + 1}`}
+                                        value={option}
+                                        onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                                      />
+                                    </div>
+                                    {question.correctAnswer === oIndex && (
+                                      <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
+                                        ✓ 정답
+                                      </span>
+                                    )}
                                   </div>
-                                  {question.correctAnswer === oIndex && (
-                                    <span className="text-xs text-green-600 dark:text-green-400 font-medium shrink-0">
-                                      ✓ 정답
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
-                            </RadioGroup>
-                          </div>
+                                ))}
+                              </RadioGroup>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-md">
+                                <Info className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                                <Label className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                                  모범답안을 입력하세요. 수학 기호를 사용할 수 있습니다.
+                                </Label>
+                              </div>
+                              <Label>모범답안 (LaTeX 지원)</Label>
+                              <MathInput
+                                value={question.modelAnswer}
+                                onChange={(value) => updateQuestion(qIndex, "modelAnswer", value)}
+                                placeholder="모범답안을 입력하세요 (예: x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a})"
+                              />
+                            </div>
+                          )}
 
                           <div className="space-y-2">
                             <Label htmlFor={`explanation-${qIndex}`}>설명 (선택사항)</Label>
@@ -735,10 +782,16 @@ const Instructor = () => {
                     ))}
                   </div>
 
-                  <Button onClick={addQuestion} variant="outline" className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    문제 추가
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={() => addQuestion('multiple_choice')} variant="outline" className="flex-1">
+                      <Plus className="h-4 w-4 mr-2" />
+                      객관식 문제 추가
+                    </Button>
+                    <Button onClick={() => addQuestion('free_response')} variant="outline" className="flex-1">
+                      <Plus className="h-4 w-4 mr-2" />
+                      서술형 문제 추가
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

@@ -294,8 +294,10 @@ export type Database = {
           created_at: string
           explanation: string
           id: string
+          model_answer: string
           options: Json
           order_number: number
+          question_type: Database["public"]["Enums"]["question_type"]
           text: string
         }[]
       }

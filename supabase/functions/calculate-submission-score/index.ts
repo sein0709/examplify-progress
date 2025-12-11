@@ -85,23 +85,43 @@ serve(async (req) => {
     
     console.log(`Found ${questions.length} questions for assignment`);
 
-    // Calculate score
+    // Calculate score - only auto-score multiple choice questions
     let score = 0;
-    const questionMap = new Map(questions.map((q: any) => [q.id, q.correct_answer]));
+    let multipleChoiceCount = 0;
+    let freeResponseCount = 0;
+    
+    const questionMap = new Map<string, { correct_answer: number | null; question_type: string }>(
+      questions.map((q: any) => [q.id, {
+        correct_answer: q.correct_answer,
+        question_type: q.question_type || 'multiple_choice'
+      }])
+    );
 
     for (const answer of student_answers) {
-      const correctAnswer = questionMap.get(answer.question_id);
-      if (correctAnswer !== undefined && answer.selected_answer === correctAnswer) {
-        score++;
+      const question = questionMap.get(answer.question_id);
+      if (!question) continue;
+      
+      if (question.question_type === 'multiple_choice') {
+        multipleChoiceCount++;
+        if (question.correct_answer !== undefined && 
+            question.correct_answer !== null && 
+            answer.selected_answer === question.correct_answer) {
+          score++;
+        }
+      } else if (question.question_type === 'free_response') {
+        freeResponseCount++;
       }
     }
 
-    console.log(`Score calculated: ${score}/${questions.length} for assignment ${assignment_id}`);
+    console.log(`Score calculated: ${score}/${multipleChoiceCount} MC questions, ${freeResponseCount} FR questions pending review`);
 
     return new Response(
       JSON.stringify({ 
         score,
-        total_questions: questions.length 
+        total_questions: questions.length,
+        multiple_choice_count: multipleChoiceCount,
+        free_response_count: freeResponseCount,
+        pending_grading: freeResponseCount
       }),
       { 
         status: 200, 
