@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info, ClipboardList, BookOpen, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info, ClipboardList, BookOpen, Search, Users } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -28,6 +28,7 @@ import { MathDisplay } from "@/components/MathDisplay";
 import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
 import { AssignmentAnalyticsCard } from "@/components/AssignmentAnalyticsCard";
+import { StudentGradeCard } from "@/components/StudentGradeCard";
 import { StudentScoreDialog } from "@/components/StudentScoreDialog";
 interface UserProfile {
   id: string;
@@ -1118,46 +1119,96 @@ setQuestions([{
             </TabsContent>
 
             <TabsContent value="grades">
-              <Card>
-                <CardHeader variant="accent">
-                  <CardTitle>학생 성적</CardTitle>
-                  <CardDescription>
-                    학생 이름을 클릭하여 상세 성적을 확인하세요
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="relative max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="학생 검색..."
-                      className="pl-9"
-                      value={gradesSearch}
-                      onChange={(e) => setGradesSearch(e.target.value)}
-                    />
-                  </div>
-                  {(() => {
-                    const uniqueStudents = Array.from(
-                      new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
-                    ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()))
-                     .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-                    return uniqueStudents.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">
-                        {submissions.length === 0 ? "학생이 없습니다" : "검색 결과가 없습니다"}
-                      </p>
-                    ) : (
-                      <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                        {uniqueStudents.map(student => (
-                          <StudentScoreDialog
-                            key={student.id}
-                            studentId={student.id}
-                            studentName={student.name}
-                          />
-                        ))}
+              <div className="space-y-6">
+                {/* Stats Overview */}
+                {(() => {
+                  const uniqueStudents = Array.from(
+                    new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
+                  );
+                  const gradedSubs = submissions.filter(s => s.score !== null);
+                  const avgScore = gradedSubs.length > 0 
+                    ? Math.round(gradedSubs.reduce((acc, s) => acc + (s.score! / s.total_questions) * 100, 0) / gradedSubs.length)
+                    : 0;
+                  
+                  return (
+                    <>
+                      {/* Header with gradient */}
+                      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-accent/5 to-background border border-border/50 p-6">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                        <div className="relative">
+                          <h2 className="text-2xl font-bold text-foreground mb-1">학생 성적</h2>
+                          <p className="text-muted-foreground">학생 카드를 클릭하여 상세 성적을 확인하세요</p>
+                          
+                          <div className="flex flex-wrap gap-6 mt-4">
+                            <div>
+                              <p className="text-3xl font-bold text-primary">{uniqueStudents.length}</p>
+                              <p className="text-sm text-muted-foreground">등록 학생</p>
+                            </div>
+                            <div className="w-px bg-border/50" />
+                            <div>
+                              <p className="text-3xl font-bold text-foreground">{submissions.length}</p>
+                              <p className="text-sm text-muted-foreground">총 제출</p>
+                            </div>
+                            <div className="w-px bg-border/50" />
+                            <div>
+                              <p className="text-3xl font-bold text-foreground">{avgScore}%</p>
+                              <p className="text-sm text-muted-foreground">전체 평균</p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
+
+                      {/* Search */}
+                      <div className="relative max-w-md">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="이름으로 학생 검색..."
+                          className="pl-11 h-11 bg-background/50 border-border/50 focus:border-primary/50 rounded-xl"
+                          value={gradesSearch}
+                          onChange={(e) => setGradesSearch(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* Student Grid */}
+                {(() => {
+                  const uniqueStudents = Array.from(
+                    new Map(submissions.map(s => [s.student_id, { id: s.student_id, name: s.student.full_name }])).values()
+                  ).filter(student => student.name?.toLowerCase().includes(gradesSearch.toLowerCase()))
+                   .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+                  
+                  return uniqueStudents.length === 0 ? (
+                    <Card className="border-dashed">
+                      <CardContent className="py-16">
+                        <div className="text-center">
+                          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                            <Users className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-lg font-medium text-foreground mb-1">
+                            {submissions.length === 0 ? "등록된 학생이 없습니다" : "검색 결과가 없습니다"}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {submissions.length === 0 ? "학생들이 과제를 제출하면 여기에 표시됩니다" : "다른 검색어를 시도해보세요"}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {uniqueStudents.map((student, index) => (
+                        <StudentGradeCard
+                          key={student.id}
+                          studentId={student.id}
+                          studentName={student.name}
+                          index={index}
+                        />
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
             </TabsContent>
 
             <TabsContent value="analytics">
