@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle, ClipboardList, BookOpen, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle, ClipboardList, BookOpen, Check, X, Search, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { BulkQuestionInput, ParsedQuestion } from "@/components/BulkQuestionInput";
@@ -27,7 +27,9 @@ import { MathInput } from "@/components/MathInput";
 import { MathDisplay } from "@/components/MathDisplay";
 import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
+import { AssignmentAnalyticsCard } from "@/components/AssignmentAnalyticsCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 interface QuestionForm {
   text: string;
   options: string[];
@@ -106,6 +108,23 @@ const Instructor = () => {
   const [progressLoading, setProgressLoading] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [assignmentType, setAssignmentType] = useState<'quiz' | 'reading'>('quiz');
+  
+  // Analytics Filter States
+  const [analyticsSearch, setAnalyticsSearch] = useState("");
+  const [analyticsTypeFilter, setAnalyticsTypeFilter] = useState("all");
+  const [analyticsSortOrder, setAnalyticsSortOrder] = useState("newest");
+  
+  // Filtered assignments for analytics
+  const filteredAnalyticsAssignments = myAssignments.filter(assignment => {
+    const matchesSearch = assignment.title.toLowerCase().includes(analyticsSearch.toLowerCase());
+    const matchesType = analyticsTypeFilter === "all" || assignment.assignment_type === analyticsTypeFilter;
+    return matchesSearch && matchesType;
+  }).sort((a, b) => {
+    if (analyticsSortOrder === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (analyticsSortOrder === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (analyticsSortOrder === "name") return a.title.localeCompare(b.title);
+    return 0;
+  });
   useEffect(() => {
     fetchMyAssignments();
   }, [user]);
@@ -489,6 +508,7 @@ const Instructor = () => {
             <TabsTrigger value="create">과제 생성</TabsTrigger>
             <TabsTrigger value="assignments">내 과제</TabsTrigger>
             <TabsTrigger value="progress">학생 진도</TabsTrigger>
+            <TabsTrigger value="analytics">과제 아카이브</TabsTrigger>
           </TabsList>
 
           <TabsContent value="create">
@@ -959,6 +979,80 @@ const Instructor = () => {
                     </div>
                   </CardContent>
                 </Card>}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <div className="space-y-6">
+              {/* Header with Search and Filters */}
+              <Card>
+                <CardHeader variant="accent">
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    과제 아카이브
+                  </CardTitle>
+                  <CardDescription>모든 과제의 점수 분포 및 통계를 확인하세요</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Search and Filter Controls */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="과제 검색..."
+                        className="pl-9"
+                        value={analyticsSearch}
+                        onChange={(e) => setAnalyticsSearch(e.target.value)}
+                      />
+                    </div>
+                    <Select value={analyticsTypeFilter} onValueChange={setAnalyticsTypeFilter}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="유형" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체</SelectItem>
+                        <SelectItem value="quiz">퀴즈</SelectItem>
+                        <SelectItem value="reading">비퀴즈</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={analyticsSortOrder} onValueChange={setAnalyticsSortOrder}>
+                      <SelectTrigger className="w-[150px]">
+                        <SelectValue placeholder="정렬" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">최신순</SelectItem>
+                        <SelectItem value="oldest">오래된순</SelectItem>
+                        <SelectItem value="name">이름순</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Assignment Analytics Cards */}
+              {loading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredAnalyticsAssignments.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12">
+                    <p className="text-center text-muted-foreground">
+                      {myAssignments.length === 0 ? "아직 생성된 과제가 없습니다" : "검색 결과가 없습니다"}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {filteredAnalyticsAssignments.map((assignment) => (
+                    <AssignmentAnalyticsCard
+                      key={assignment.id}
+                      assignment={assignment}
+                      showInstructor={false}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

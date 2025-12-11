@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info, ClipboardList, BookOpen } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2, LogOut, Plus, CalendarIcon, BarChart3, Upload, FileText, Image, Info, ClipboardList, BookOpen, Search } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -27,6 +27,7 @@ import { MathInput } from "@/components/MathInput";
 import { MathDisplay } from "@/components/MathDisplay";
 import { FRQGradingDialog } from "@/components/FRQGradingDialog";
 import { CompletionStatusDialog } from "@/components/CompletionStatusDialog";
+import { AssignmentAnalyticsCard } from "@/components/AssignmentAnalyticsCard";
 interface UserProfile {
   id: string;
   full_name: string;
@@ -113,6 +114,25 @@ const [questions, setQuestions] = useState<QuestionForm[]>([{
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [assignmentType, setAssignmentType] = useState<"quiz" | "reading">("quiz");
   
+  // Analytics Filter States
+  const [analyticsSearch, setAnalyticsSearch] = useState("");
+  const [analyticsTypeFilter, setAnalyticsTypeFilter] = useState("all");
+  const [analyticsInstructorFilter, setAnalyticsInstructorFilter] = useState("all-instructors");
+  const [analyticsSortOrder, setAnalyticsSortOrder] = useState("newest");
+  
+  // Filtered assignments for analytics
+  const filteredAnalyticsAssignments = assignments.filter(assignment => {
+    const matchesSearch = assignment.title.toLowerCase().includes(analyticsSearch.toLowerCase());
+    const matchesType = analyticsTypeFilter === "all" || assignment.assignment_type === analyticsTypeFilter;
+    const matchesInstructor = analyticsInstructorFilter === "all-instructors" || assignment.instructor.full_name === instructorsList.find(i => i.id === analyticsInstructorFilter)?.full_name;
+    return matchesSearch && matchesType && matchesInstructor;
+  }).sort((a, b) => {
+    if (analyticsSortOrder === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (analyticsSortOrder === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (analyticsSortOrder === "name") return a.title.localeCompare(b.title);
+    return 0;
+  });
+
   const fetchUsers = async () => {
     try {
       const {
@@ -1146,8 +1166,16 @@ setQuestions([{
 
             <TabsContent value="analytics">
               <div className="space-y-6">
-                {/* Overall Statistics */}
+                {/* Overall Statistics Summary */}
                 <div className="grid gap-4 md:grid-cols-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">전체 과제</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{assignments.length}</div>
+                    </CardContent>
+                  </Card>
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium">평균 점수</CardTitle>
@@ -1166,14 +1194,6 @@ setQuestions([{
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">완료</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{calculateOverallStats().completedSubmissions}</div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium">완료율</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1182,84 +1202,86 @@ setQuestions([{
                   </Card>
                 </div>
 
-                {/* Per-Assignment Analytics */}
+                {/* Archive Header with Search and Filters */}
                 <Card>
                   <CardHeader variant="accent">
                     <CardTitle className="flex items-center gap-2">
                       <BarChart3 className="h-5 w-5" />
-                      과제별 분석
+                      과제 아카이브
                     </CardTitle>
                     <CardDescription>
-                      각 과제에 대한 상세 점수 분석
+                      모든 과제의 점수 분포 및 통계를 확인하세요
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    {assignments.length === 0 ? <p className="text-center text-muted-foreground py-8">
-                        등록된 과제가 없습니다
-                      </p> : <div className="space-y-6">
-                        {assignments.map(assignment => {
-                    const stats = getAssignmentStats(assignment.id);
-                    return <Card key={assignment.id} className="mt-2.5">
-                              <CardHeader>
-                                <CardTitle className="text-lg">{assignment.title}</CardTitle>
-                                <CardDescription>
-                                  작성자: {assignment.instructor.full_name}
-                                </CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <div className="grid gap-4 md:grid-cols-3">
-                                  <div>
-                                    <p className="text-sm text-muted-foreground">평균 점수</p>
-                                    <p className="text-2xl font-bold">{stats.averageScore}%</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-muted-foreground">제출</p>
-                                    <p className="text-2xl font-bold">
-                                      {stats.completedSubmissions}/{stats.totalSubmissions}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm text-muted-foreground">완료율</p>
-                                    <p className="text-2xl font-bold">{stats.completionRate}%</p>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                  <h4 className="text-sm font-medium">점수 분포</h4>
-                                  <ChartContainer config={{
-                            count: {
-                              label: "학생 수",
-                              color: "hsl(var(--chart-1))"
-                            }
-                          }} className="h-[300px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                      <BarChart data={stats.scoreDistribution} className="h-80 max-h-80">
-                                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                                        <XAxis dataKey="range" className="text-xs" label={{
-                                  value: '점수 구간',
-                                  position: 'insideBottom',
-                                  offset: -5
-                                }} />
-                                        <YAxis className="text-xs" label={{
-                                  value: '학생 수',
-                                  angle: -90,
-                                  position: 'insideLeft'
-                                }} />
-                                        <ChartTooltip content={<ChartTooltipContent />} formatter={(value: number) => {
-                                  const item = stats.scoreDistribution.find(d => d.count === value);
-                                  return [`${value}명 (${item?.percentage || 0}%)`, "학생 수"];
-                                }} />
-                                        <Bar dataKey="count" fill="hsl(var(--data-viz))" radius={[4, 4, 0, 0]} />
-                                      </BarChart>
-                                    </ResponsiveContainer>
-                                  </ChartContainer>
-                                </div>
-                              </CardContent>
-                            </Card>;
-                  })}
-                      </div>}
+                  <CardContent className="space-y-4">
+                    {/* Search and Filter Controls */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="과제 검색..."
+                          className="pl-9"
+                          value={analyticsSearch}
+                          onChange={(e) => setAnalyticsSearch(e.target.value)}
+                        />
+                      </div>
+                      <Select value={analyticsTypeFilter} onValueChange={setAnalyticsTypeFilter}>
+                        <SelectTrigger className="w-[150px]">
+                          <SelectValue placeholder="유형" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">전체</SelectItem>
+                          <SelectItem value="quiz">퀴즈</SelectItem>
+                          <SelectItem value="reading">비퀴즈</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={analyticsInstructorFilter} onValueChange={setAnalyticsInstructorFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="강사" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all-instructors">전체 강사</SelectItem>
+                          {instructorsList.map(instructor => (
+                            <SelectItem key={instructor.id} value={instructor.id}>
+                              {instructor.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={analyticsSortOrder} onValueChange={setAnalyticsSortOrder}>
+                        <SelectTrigger className="w-[150px]">
+                          <SelectValue placeholder="정렬" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="newest">최신순</SelectItem>
+                          <SelectItem value="oldest">오래된순</SelectItem>
+                          <SelectItem value="name">이름순</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </CardContent>
                 </Card>
+
+                {/* Assignment Analytics Cards */}
+                {filteredAnalyticsAssignments.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12">
+                      <p className="text-center text-muted-foreground">
+                        {assignments.length === 0 ? "등록된 과제가 없습니다" : "검색 결과가 없습니다"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredAnalyticsAssignments.map((assignment) => (
+                      <AssignmentAnalyticsCard
+                        key={assignment.id}
+                        assignment={assignment}
+                        showInstructor={true}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>}
