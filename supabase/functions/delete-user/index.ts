@@ -253,9 +253,15 @@ Deno.serve(async (req) => {
     // 9) Finally delete from auth.users so they can re-register
     const { error: deleteAuthUserError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
+    // If the auth user is already gone, treat it as a successful deletion
     if (deleteAuthUserError) {
-      console.error("delete-user: error deleting auth user", deleteAuthUserError);
-      throw deleteAuthUserError;
+      const msg = deleteAuthUserError.message || "";
+      if (!msg.toLowerCase().includes("user not found")) {
+        console.error("delete-user: error deleting auth user", deleteAuthUserError);
+        throw deleteAuthUserError;
+      } else {
+        console.warn("delete-user: auth user already deleted, continuing", deleteAuthUserError);
+      }
     }
 
     console.log("delete-user: successfully deleted user", userId);
