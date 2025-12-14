@@ -85,26 +85,37 @@ Deno.serve(async (req) => {
 
     const instructorAssignmentIds = (instructorAssignments || []).map((a) => a.id);
 
-    // 2) Gather all submissions by this user (as student) or for their assignments (as instructor)
-    const { data: relatedSubmissions, error: relatedSubmissionsError } =
+    // 2) Gather all submissions by this user (as student)
+    const { data: studentSubmissions, error: studentSubmissionsError } =
       await supabaseAdmin
         .from("submissions")
         .select("id, assignment_id, student_id")
-        .or(
-          [
-            `student_id.eq.${userId}`,
-            instructorAssignmentIds.length
-              ? `assignment_id.in.(${instructorAssignmentIds.join(",")})`
-              : "assignment_id.eq.__none__",
-          ].join(",")
-        );
+        .eq("student_id", userId);
 
-    if (relatedSubmissionsError) {
-      console.error("delete-user: error fetching related submissions", relatedSubmissionsError);
-      throw relatedSubmissionsError;
+    if (studentSubmissionsError) {
+      console.error("delete-user: error fetching student submissions", studentSubmissionsError);
+      throw studentSubmissionsError;
     }
 
-    const submissionIds = (relatedSubmissions || []).map((s) => s.id);
+    // If this user is an instructor, also gather submissions for their assignments
+    let instructorSubmissions: any[] = [];
+    if (instructorAssignmentIds.length > 0) {
+      const { data, error } = await supabaseAdmin
+        .from("submissions")
+        .select("id, assignment_id, student_id")
+        .in("assignment_id", instructorAssignmentIds);
+
+      if (error) {
+        console.error("delete-user: error fetching instructor submissions", error);
+        throw error;
+      }
+
+      instructorSubmissions = data || [];
+    }
+
+    const relatedSubmissions = [...(studentSubmissions || []), ...instructorSubmissions];
+
+    const submissionIds = relatedSubmissions.map((s) => s.id);
 
     // 3) Delete student_answers tied to those submissions
     if (submissionIds.length > 0) {
