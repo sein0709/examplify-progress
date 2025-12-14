@@ -319,14 +319,21 @@ const Admin = () => {
   };
   const deleteUser = async (userId: string) => {
     try {
-      const {
-        error: roleError
-      } = await supabase.from("user_roles").delete().eq("user_id", userId);
-      if (roleError) throw roleError;
-      const {
-        error: profileError
-      } = await supabase.from("profiles").delete().eq("id", userId);
-      if (profileError) throw profileError;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      
+      if (!token) {
+        throw new Error("인증 토큰이 없습니다");
+      }
+
+      const response = await supabase.functions.invoke("delete-user", {
+        body: { userId },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "사용자 삭제 실패");
+      }
+
       toast.success("사용자 삭제 완료");
       fetchUsers();
     } catch (error: any) {
