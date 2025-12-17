@@ -1027,37 +1027,6 @@ const Instructor = () => {
               </Card>
 
               {/* Bar Chart */}
-              {studentProgress.length > 0 && <Card>
-                  <CardHeader variant="accent">
-                    <CardTitle>학생별 평균 점수</CardTitle>
-                    <CardDescription>학생 성과 시각적 비교</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={studentProgress.map(s => ({
-                      name: s.studentName.split(" ")[0],
-                      score: Math.round(s.averageScore)
-                    }))} margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5
-                    }}>
-                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
-                          <YAxis domain={[0, 100]} className="text-xs fill-muted-foreground" />
-                          <Tooltip contentStyle={{
-                        backgroundColor: "hsl(var(--background))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "6px"
-                      }} formatter={(value: number) => [`${value}%`, "평균 점수"]} />
-                          <Bar dataKey="score" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>}
             </div>
           </TabsContent>
 
