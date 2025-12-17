@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle, ClipboardList, BookOpen, Check, X, Search, BarChart3, LayoutGrid, List } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, CalendarIcon, Loader2, Upload, FileText, Image, Info, Users, TrendingUp, CheckCircle, ClipboardList, BookOpen, Check, X, Search, BarChart3, LayoutGrid, List, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { BulkQuestionInput, ParsedQuestion } from "@/components/BulkQuestionInput";
@@ -501,13 +501,24 @@ const Instructor = () => {
       toast.error("과제 삭제 실패: " + error.message);
     }
   };
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
   return <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-5 w-5" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-3xl font-bold">강사 포털</h1>
+          </div>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            로그아웃
           </Button>
-          <h1 className="text-3xl font-bold">강사 포털</h1>
         </div>
 
         <Tabs defaultValue="create" className="space-y-4">
