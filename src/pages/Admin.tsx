@@ -82,6 +82,7 @@ interface Instructor {
 }
 const Admin = () => {
   const {
+    user,
     hasRole,
     signOut
   } = useAuth();
@@ -95,7 +96,6 @@ const Admin = () => {
 
   // Create Assignment States
   const [instructorsList, setInstructorsList] = useState<Instructor[]>([]);
-  const [selectedInstructor, setSelectedInstructor] = useState<string>("");
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState<Date>();
@@ -439,8 +439,8 @@ const Admin = () => {
     setQuestions(newQuestions);
   };
   const handleCreateAssignment = async () => {
-    if (!selectedInstructor) {
-      toast.error("강사를 선택해주세요");
+    if (!user?.id) {
+      toast.error("로그인이 필요합니다");
       return;
     }
     if (!assignmentTitle.trim()) {
@@ -483,7 +483,7 @@ const Admin = () => {
       } = await supabase.from("assignments").insert({
         title: assignmentTitle,
         description: description || null,
-        instructor_id: selectedInstructor,
+        instructor_id: user.id,
         due_date: dueDate?.toISOString() || null,
         file_url: fileUrl,
         file_type: fileType,
@@ -522,7 +522,6 @@ const Admin = () => {
         if (saError) throw saError;
       }
       toast.success("과제 생성 완료!");
-      setSelectedInstructor("");
       setAssignmentTitle("");
       setDescription("");
       setDueDate(undefined);
@@ -793,20 +792,6 @@ const Admin = () => {
                       <CardDescription>과제의 기본 정보를 설정하세요</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6 mt-2.5">
-                      <div className="space-y-2">
-                        <Label>강사 선택</Label>
-                        <Select value={selectedInstructor} onValueChange={setSelectedInstructor}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="강사를 선택하세요" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {instructorsList.map(instructor => <SelectItem key={instructor.id} value={instructor.id}>
-                                {instructor.full_name}
-                              </SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
                       <div className="space-y-2">
                         <Label>과제 유형</Label>
                         <RadioGroup value={assignmentType} onValueChange={value => setAssignmentType(value as "quiz" | "reading")} className="flex gap-4">
