@@ -30,27 +30,37 @@ export const StudentAssignmentManager = ({ assignmentId, assignmentTitle }: Stud
   const fetchStudents = async () => {
     setLoading(true);
     try {
-      // Fetch all verified students
-      const { data: studentsData, error: studentsError } = await supabase
+      // Fetch all student user IDs
+      const { data: rolesData, error: rolesError } = await supabase
         .from("user_roles")
-        .select(`
-          user_id,
-          profiles!inner(id, full_name, email, verified)
-        `)
+        .select("user_id")
         .eq("role", "student");
 
-      if (studentsError) throw studentsError;
+      if (rolesError) throw rolesError;
 
-      // Filter to only verified students
-      const verifiedStudents = (studentsData || [])
-        .filter((s: any) => s.profiles?.verified)
-        .map((s: any) => ({
-          id: s.user_id,
-          full_name: s.profiles.full_name,
-          email: s.profiles.email,
+      const studentUserIds = (rolesData || []).map(r => r.user_id);
+
+      if (studentUserIds.length === 0) {
+        setStudents([]);
+      } else {
+        // Fetch verified profiles for these students
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, verified")
+          .in("id", studentUserIds)
+          .eq("verified", true)
+          .order("full_name");
+
+        if (profilesError) throw profilesError;
+
+        const verifiedStudents = (profilesData || []).map(p => ({
+          id: p.id,
+          full_name: p.full_name,
+          email: p.email,
         }));
 
-      setStudents(verifiedStudents);
+        setStudents(verifiedStudents);
+      }
 
       // Fetch assigned students for this assignment
       const { data: assignedData, error: assignedError } = await supabase
